@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metrics-model
+  namespace: {{ .Values.namespaces.models }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: metrics-model
+spec:
+  replicas: {{ .Values.metricsModel.replicaCount }}
+  selector:
+    matchLabels:
+      app: metrics-model
+  template:
+    metadata:
+      labels:
+        app: metrics-model
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: metrics-model
+          image: {{ .Values.metricsModel.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.metricsModel.service.port }}
+          {{- if .Values.metricsModel.artifactClaimName }}
+          volumeMounts:
+            - name: model-artifacts
+              mountPath: /app/artifacts
+              readOnly: true
+          {{- end }}
+          resources:
+            {{- toYaml .Values.metricsModel.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.metricsModel.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.metricsModel.service.port }}
+      {{- if .Values.metricsModel.artifactClaimName }}
+      volumes:
+        - name: model-artifacts
+          persistentVolumeClaim:
+            claimName: {{ .Values.metricsModel.artifactClaimName | quote }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: metrics-model
+  namespace: {{ .Values.namespaces.models }}
+spec:
+  selector:
+    app: metrics-model
+  ports:
+    - port: {{ .Values.metricsModel.service.port }}
+      targetPort: {{ .Values.metricsModel.service.port }}

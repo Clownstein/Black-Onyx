@@ -1,0 +1,17 @@
+{
+  "[PAD]": 0,
+  "[CLS]": 1,
+  "[SEP]": 2,
+  "[MASK]": 3,
+  "[UNK]": 4,
+  "tpl-auth-success": 5,
+  "tpl-session-create": 6,
+  "tpl-auth-failure": 7,
+  "tpl-session-refresh": 8,
+  "tpl-db-query": 9,
+  "tpl-http-200": 10,
+  "tpl-cache-hit": 11,
+  "tpl-shell-exec": 12,
+  "tpl-privilege-change": 13,
+  "tpl-novel-unknown-xyz": 14
+}

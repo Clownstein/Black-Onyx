@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/schemas/log_raw.json",
+  "title": "LogRawEvent",
+  "description": "Raw log payload (ANOMALY_DETECTION_PLATFORM.md §5.3).",
+  "type": "object",
+  "required": ["event_type", "severity", "message"],
+  "properties": {
+    "event_type": { "const": "log.raw" },
+    "severity": { "type": "string", "minLength": 1 },
+    "facility": { "type": ["string", "null"] },
+    "logger": { "type": ["string", "null"] },
+    "message": { "type": "string", "minLength": 1 },
+    "structured": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "resource": {
+      "type": "object",
+      "properties": {
+        "process_name": { "type": "string" },
+        "container_id": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

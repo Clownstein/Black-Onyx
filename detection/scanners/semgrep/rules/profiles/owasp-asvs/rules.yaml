@@ -1,0 +1,42 @@
+rules:
+  - id: owasp-asvs-eval-use
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Use of eval() on request/user-controlled input violates OWASP ASVS V5
+      (input validation / code injection). Avoid dynamic code evaluation.
+    metadata:
+      profile: owasp-asvs
+      category: security
+      cwe: "CWE-95"
+      owasp: "A03:2021 - Injection"
+    patterns:
+      - pattern: eval(...)
+
+  - id: owasp-asvs-exec-use
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Use of exec() enables arbitrary code execution (OWASP ASVS V5). Replace
+      with an explicit, validated dispatch table.
+    metadata:
+      profile: owasp-asvs
+      category: security
+      cwe: "CWE-95"
+      owasp: "A03:2021 - Injection"
+    patterns:
+      - pattern: exec(...)
+
+  - id: owasp-asvs-os-command-injection
+    languages: [python]
+    severity: WARNING
+    message: >-
+      Passing a formatted string to os.system executes a shell command and is
+      prone to OS command injection (OWASP ASVS V5).
+    metadata:
+      profile: owasp-asvs
+      category: security
+      cwe: "CWE-78"
+      owasp: "A03:2021 - Injection"
+    patterns:
+      - pattern: os.system(...)

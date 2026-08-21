@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: response-orchestrator
+  namespace: {{ .Values.namespaces.application }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: response-orchestrator
+spec:
+  replicas: {{ .Values.responseOrchestrator.replicaCount }}
+  selector:
+    matchLabels:
+      app: response-orchestrator
+  template:
+    metadata:
+      labels:
+        app: response-orchestrator
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: response-orchestrator
+          image: {{ .Values.responseOrchestrator.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.responseOrchestrator.service.port }}
+          env:
+            - name: RESPONSE_ORCHESTRATOR_PORT
+              value: {{ .Values.responseOrchestrator.service.port | quote }}
+            - name: RESPONSE_ORCHESTRATOR_DRY_RUN_DEFAULT
+              value: {{ .Values.responseOrchestrator.dryRunDefault | quote }}
+            - name: RESPONSE_ORCHESTRATOR_DATABASE_URL
+              value: sqlite+pysqlite:////tmp/response.db
+            - name: RESPONSE_ORCHESTRATOR_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: black-onyx-detection-secrets
+                  key: responseOrchestratorApiKey
+                  optional: {{ .Values.security.allowDemoKeys }}
+            - name: RESPONSE_ORCHESTRATOR_APPROVER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: black-onyx-detection-secrets
+                  key: responseApproverApiKey
+                  optional: true
+          resources:
+            {{- toYaml .Values.responseOrchestrator.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.responseOrchestrator.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.responseOrchestrator.service.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: response-orchestrator
+  namespace: {{ .Values.namespaces.application }}
+spec:
+  selector:
+    app: response-orchestrator
+  ports:
+    - port: {{ .Values.responseOrchestrator.service.port }}
+      targetPort: {{ .Values.responseOrchestrator.service.port }}

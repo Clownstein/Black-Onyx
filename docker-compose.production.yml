@@ -1,0 +1,41 @@
+services:
+  qdrant:
+    ports: !reset []
+    networks: [backend]
+
+  web:
+    ports: !reset []
+    environment:
+      QDRANT_SECURITY__PRODUCTION: "true"
+      QDRANT_SECURITY__SECURE_COOKIES: "true"
+      QDRANT_SECURITY__EXTERNAL_URL: ${BLACK_ONYX_EXTERNAL_URL:?Set an HTTPS external URL}
+      QDRANT_SECURITY__ALLOWED_HOSTS: ${BLACK_ONYX_ALLOWED_HOSTS:?Set a JSON host list}
+      QDRANT_SECURITY__TRUSTED_PROXIES: '["172.16.0.0/12"]'
+    networks: [backend, proxy]
+
+  caddy:
+    image: caddy:2.10.0-alpine
+    depends_on:
+      web:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      BLACK_ONYX_HOSTNAME: ${BLACK_ONYX_HOSTNAME:?Set the public hostname}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [proxy]
+    restart: unless-stopped
+
+networks:
+  backend:
+    internal: true
+  proxy:
+
+volumes:
+  caddy_data:
+  caddy_config:

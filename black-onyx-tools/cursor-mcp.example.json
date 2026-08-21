@@ -1,0 +1,47 @@
+{
+  "mcpServers": {
+    "black-onyx-tip": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "black-onyx-tools",
+        "black-onyx-tip-mcp"
+      ],
+      "env": {
+        "BLACK_ONYX_BASE_URL": "http://127.0.0.1:8000",
+        "BLACK_ONYX_MCP_SERVICE_KEY": "<same-as-tip-BLACK_ONYX_MCP_SERVICE_KEY>",
+        "BLACK_ONYX_DEFAULT_TENANT_ID": "default"
+      }
+    },
+    "black-onyx-detection": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "black-onyx-tools",
+        "black-onyx-detection-mcp"
+      ],
+      "env": {
+        "BLACK_ONYX_BASE_URL": "http://127.0.0.1:8000",
+        "BLACK_ONYX_MCP_SERVICE_KEY": "<same-as-tip-BLACK_ONYX_MCP_SERVICE_KEY>",
+        "BLACK_ONYX_DEFAULT_TENANT_ID": "default"
+      }
+    },
+    "black-onyx-ops": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "black-onyx-tools",
+        "black-onyx-ops-mcp"
+      ],
+      "env": {
+        "BLACK_ONYX_BASE_URL": "http://127.0.0.1:8000",
+        "BLACK_ONYX_MCP_SERVICE_KEY": "<same-as-tip-BLACK_ONYX_MCP_SERVICE_KEY>",
+        "BLACK_ONYX_DEFAULT_TENANT_ID": "default",
+        "BLACK_ONYX_TOOLS_ALLOW_SANDBOX": "false"
+      }
+    }
+  }
+}

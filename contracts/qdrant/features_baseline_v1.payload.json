@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/qdrant/features_baseline_v1.payload.json",
+  "title": "FeaturesBaselineV1Payload",
+  "type": "object",
+  "required": [
+    "tenant_id",
+    "asset_id",
+    "modality",
+    "embed_model",
+    "embed_version"
+  ],
+  "properties": {
+    "tenant_id": {
+      "type": "string"
+    },
+    "modality": {
+      "type": "string"
+    },
+    "asset_id": {
+      "type": "string"
+    },
+    "service_id": {
+      "type": "string"
+    },
+    "site_id": {
+      "type": "string"
+    },
+    "feature_event_id": {
+      "type": "string"
+    },
+    "window_start": {
+      "type": "string"
+    },
+    "window_start_ts": {
+      "type": "integer"
+    },
+    "window_end": {
+      "type": "string"
+    },
+    "window_end_ts": {
+      "type": "integer"
+    },
+    "is_baseline": {
+      "type": "boolean"
+    },
+    "sample_rate": {
+      "type": "number"
+    },
+    "feature_fingerprint": {
+      "type": "string"
+    },
+    "expires_at_ts": {
+      "type": "integer"
+    },
+    "embed_model": {
+      "type": "string"
+    },
+    "embed_version": {
+      "type": "string"
+    },
+    "schema_version": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

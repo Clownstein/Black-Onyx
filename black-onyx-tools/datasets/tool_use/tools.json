@@ -1,0 +1,572 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "black_onyx_evidence_search",
+      "description": "Semantic evidence search over Qdrant collections; optional local image CLIP search.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "collection": {
+            "type": "string",
+            "default": "all-knowledge"
+          },
+          "limit": {
+            "type": "integer",
+            "default": 10
+          },
+          "score_threshold": {
+            "type": "number",
+            "default": 0.0
+          },
+          "image_path": {
+            "type": "string",
+            "description": "Optional local image path for CLIP search"
+          }
+        }
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "black_onyx_ioc_enrich",
+      "description": "Extract IOCs from text and enrich via TIP providers; optional STIX export.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "iocs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "ioc_type": {
+                  "type": "string"
+                },
+                "ioc_value": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "export_stix": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "black_onyx_case_assist",
+      "description": "List/get/create/update cases, attach notes/points/IOCs, or promote triage (confirm=true for mutations).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "get",
+              "list",
+              "create_draft",
+              "update",
+              "add_note",
+              "add_point",
+              "add_ioc",
+              "delete",
+              "promote"
+            ]
+          },
+          "case_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "confirm": {
+            "type": "boolean",
+            "default": false
+          },
+          "promote_kind": {
+            "type": "string",
+            "enum": [
+              "alert",
+              "detection",
+              "webhook",
+              "detection_incident",
+              ""
+            ]
+          },
+          "alert_id": {
+            "type": "string"
+          },
+          "detection_key": {
+            "type": "string"
+          },
+          "incident_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "black_onyx_rule_draft",
+      "description": "Generate Sigma or YARA rule text from IOC JSON (generate-only; no telemetry execution).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "rule_type": {
+            "type": "string",
+            "enum": [
+              "sigma",
+              "yara"
+            ]
+          },
+          "iocs": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string"
+          },
+          "rule_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_type",
+          "iocs"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "black_onyx_attack_map",
+      "description": "Extract ATT&CK techniques from text and map org coverage/heatmap.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "technique_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "coverage_range": {
+            "type": "string",
+            "default": "30d"
+          },
+          "include_graph": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "black_onyx_hunt",
+      "description": "Run OpenSearch, federated, or vector hunt via detection BFF.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "search",
+              "federated",
+              "vector"
+            ],
+            "default": "search"
+          },
+          "size": {
+            "type": "integer",
+            "default": 50
+          },
+          "limit": {
+            "type": "integer",
+            "default": 25
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "black_onyx_incident_brief",
+      "description": "Build an InvestigationAssist markdown brief from an incident and linked findings.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "incident_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "incident_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "black_onyx_asset_context",
+      "description": "Resolve asset by id/hostname/IP; return topology, baseline, related incidents.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "asset_id": {
+            "type": "string"
+          },
+          "hostname": {
+            "type": "string"
+          },
+          "ip_address": {
+            "type": "string"
+          },
+          "window_days": {
+            "type": "integer",
+            "default": 7
+          }
+        }
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "black_onyx_response_draft",
+      "description": "Draft a response-orchestrator request (suggest-only). Never approves actions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "incident_id": {
+            "type": "string"
+          },
+          "playbook_id": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "default": "execute"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "default": true
+          },
+          "confirm": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "required": [
+          "incident_id",
+          "playbook_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "black_onyx_ti_match",
+      "description": "Match observables via threat-intel-service; optional TIP sync publish with confirm+case_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "observables": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "exact",
+              "semantic"
+            ],
+            "default": "exact"
+          },
+          "publish": {
+            "type": "boolean",
+            "default": false
+          },
+          "confirm": {
+            "type": "boolean",
+            "default": false
+          },
+          "case_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "observables"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "black_onyx_watchlist_decay",
+      "description": "IOC decay summary or propose watchlist adds (confirm=true to mutate).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "list_watchlists",
+              "propose_add"
+            ]
+          },
+          "watchlist_id": {
+            "type": "string"
+          },
+          "watchlist_name": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "confirm": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "black_onyx_misp_taxii_draft",
+      "description": "Draft or publish MISP/TAXII packages from case IOCs (confirm=true to publish).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "enum": [
+              "misp",
+              "taxii"
+            ]
+          },
+          "case_id": {
+            "type": "string"
+          },
+          "collection_id": {
+            "type": "string"
+          },
+          "iocs": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "info": {
+            "type": "string"
+          },
+          "confirm": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "required": [
+          "target"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "black_onyx_connector_pulse",
+      "description": "Connector health + recent detections / triage pulse.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "default": 20
+          }
+        }
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "black_onyx_feed_digest",
+      "description": "List feeds and optionally poll (poll requires confirm=true).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "feed_name": {
+            "type": "string"
+          },
+          "poll": {
+            "type": "boolean",
+            "default": false
+          },
+          "confirm": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "black_onyx_model_ops",
+      "description": "Read-only model-gateway and training-orchestrator readiness.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "passive_dns_whois",
+      "description": "Structured DNS + WHOIS pivots for a domain (ingestible fields).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string"
+          },
+          "query_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "domain"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "url_screenshot_sandbox",
+      "description": "Lab-gated URL fetch/screenshot (disabled unless sandbox env enabled); SSRF-hardened.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "max_bytes": {
+            "type": "integer",
+            "default": 65536
+          },
+          "case_id": {
+            "type": "string"
+          },
+          "confirm": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "required": [
+          "url"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "certificate_transparency",
+      "description": "Query CT logs (crt.sh) for domain pivots.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "integer",
+            "default": 25
+          }
+        },
+        "required": [
+          "domain"
+        ]
+      }
+    }
+  }
+]

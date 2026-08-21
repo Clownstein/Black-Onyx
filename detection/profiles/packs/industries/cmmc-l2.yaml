@@ -1,0 +1,63 @@
+pack_id: cmmc-l2
+kind: industry
+version: '2.0'
+title: Defense CMMC Level 2 / NIST 800-171
+recommended_backbone:
+- nist-800-53-mod
+- zero-trust
+extends_surfaces:
+- host
+- identity
+- network
+- cloud
+checks:
+- check_id: cmmc.cui.inventory
+  title: CUI inventory and marking
+  surfaces:
+  - host
+  - cloud
+  automation: manual
+  severity_default: critical
+  evidence_types:
+  - attestation
+- check_id: cmmc.cui.mfa
+  title: MFA for network access to CUI
+  surfaces:
+  - identity
+  automation: auto
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+  mitre_techniques:
+  - T1110
+- check_id: cmmc.cui.audit
+  title: Audit logging of CUI access
+  surfaces:
+  - host
+  - identity
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - log_source_silent
+- check_id: cmmc.cui.vuln
+  title: Vuln scanning on CUI assets
+  surfaces:
+  - host
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - vuln_ingest
+- check_id: cmmc.incident.report
+  title: DoD incident reporting timelines
+  surfaces:
+  - identity
+  automation: manual
+  severity_default: critical
+  evidence_types:
+  - attestation

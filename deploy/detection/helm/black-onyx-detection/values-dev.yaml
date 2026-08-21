@@ -1,0 +1,17 @@
+# Dev / lab overlay — demo keys and soft auth are intentional.
+# Usage:
+#   helm template black-onyx-detection . -f values.yaml -f values-dev.yaml
+
+security:
+  oidcDisabled: true
+  allowDemoKeys: true
+  # Demo ingest/service keys are OK in this profile (set via Secret or local env).
+  # Do not reuse these values outside lab.
+
+featureFlags:
+  externalTiPolling: true
+  airgapMode: false
+  opensearchIndexing: true
+
+opensearch:
+  url: http://opensearch:9200

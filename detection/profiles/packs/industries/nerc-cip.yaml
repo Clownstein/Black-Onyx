@@ -1,0 +1,59 @@
+pack_id: nerc-cip
+kind: industry
+version: '2026'
+title: Energy NERC CIP / Critical Infrastructure
+recommended_backbone:
+- zero-trust
+- cis-v8-ig2
+extends_surfaces:
+- network
+- host
+checks:
+- check_id: nerc.bes.identify
+  title: BES Cyber System identification
+  surfaces:
+  - host
+  - network
+  automation: manual
+  severity_default: critical
+  evidence_types:
+  - attestation
+- check_id: nerc.esp.perimeter
+  title: Electronic security perimeter
+  surfaces:
+  - network
+  automation: auto
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - cross_zone_flow
+- check_id: nerc.remote.mfa
+  title: Interactive remote access MFA via Intermediate System
+  surfaces:
+  - identity
+  - network
+  automation: auto
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+- check_id: nerc.ot.it.seg
+  title: OT/IT tightly controlled conduits
+  surfaces:
+  - network
+  automation: auto
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - cross_zone_flow
+- check_id: nerc.incident.sla
+  title: Very short incident reporting SLAs
+  surfaces:
+  - identity
+  automation: manual
+  severity_default: critical
+  evidence_types:
+  - attestation

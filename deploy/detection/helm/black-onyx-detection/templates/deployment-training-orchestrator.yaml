@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: training-orchestrator
+  namespace: {{ .Values.namespaces.training }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: training-orchestrator
+spec:
+  replicas: {{ .Values.trainingOrchestrator.replicaCount }}
+  selector:
+    matchLabels:
+      app: training-orchestrator
+  template:
+    metadata:
+      labels:
+        app: training-orchestrator
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: training-orchestrator
+          image: {{ .Values.trainingOrchestrator.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.trainingOrchestrator.service.port }}
+          resources:
+            {{- toYaml .Values.trainingOrchestrator.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.trainingOrchestrator.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.trainingOrchestrator.service.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: training-orchestrator
+  namespace: {{ .Values.namespaces.training }}
+spec:
+  selector:
+    app: training-orchestrator
+  ports:
+    - port: {{ .Values.trainingOrchestrator.service.port }}
+      targetPort: {{ .Values.trainingOrchestrator.service.port }}

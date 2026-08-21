@@ -1,0 +1,127 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "black-onyx"
+version = "1.0.0"
+description = "Black Onyx — invite-only threat-intelligence workspace with FastAPI, React UI, RAG chat, and Qdrant search"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12"
+authors = [{ name = "Black Onyx" }]
+keywords = ["qdrant", "rag", "embeddings", "ner", "fastapi", "osint", "threat-intelligence", "ioc", "stix", "mitre-attack"]
+
+dependencies = [
+    "black-onyx-contracts>=0.1.0",
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+    "sentence-transformers>=2.2.0",
+    "qdrant-client>=1.7.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings[yaml]>=2.1.0",
+    "fastapi>=0.135.0",
+    "uvicorn[standard]>=0.24.0",
+    "beautifulsoup4>=4.12.0",
+    "pdfminer.six>=20221105",
+    "chardet>=5.0.0",
+    "Pygments>=2.15.0",
+    "gliner>=0.2.0",
+    "PyYAML>=6.0",
+    "httpx>=0.25.0",
+    "websockets>=12.0",
+    "pymupdf>=1.23.0",
+    "python-multipart>=0.0.6",
+    "argon2-cffi>=23.1.0",
+    "cryptography>=42.0.0",
+    "PyOTP>=2.9.0",
+    "PyJWT>=2.9.0",
+    "bleach>=6.1.0",
+    "email-validator>=2.1.0",
+]
+
+[project.optional-dependencies]
+image = [
+    "pytesseract>=0.3.10",
+    "Pillow>=10.0.0",
+    "open-clip-torch>=2.24.0",
+    "imagehash>=4.3.0",
+]
+ocr-paddle = [
+    # PaddleOCR 3.x changed the OCR API (use_angle_cls/cls=True removed).
+    # The OCREngine in extraction/ocr.py targets the 2.x API, so pin below 3.0.
+    "paddleocr>=2.7.0,<3.0.0",
+    "paddlepaddle>=2.5.0,<3.0.0",
+]
+llm = [
+    "openai>=1.0.0",
+    "anthropic>=0.40.0",
+    "google-genai>=1.0.0",
+    "ollama>=0.4.0",
+    "llama-cpp-python>=0.2.0",
+]
+textract = [
+    "textract",
+]
+threat-intel = [
+    "stix2>=3.0.1",
+    "feedparser>=6.0.0",
+    "taxii2-client>=2.3.0",
+    "markdown>=3.5.0",
+    "weasyprint>=60.0",
+]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "httpx>=0.25.0",
+    "ruff>=0.3.0",
+    "mypy>=1.8.0",
+    "pre-commit>=3.6.0",
+    "bandit>=1.7.8",
+    "pip-audit>=2.7.0",
+]
+
+[project.scripts]
+black-onyx = "black_onyx.cli:main"
+black-onyx-web = "black_onyx.api.app:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/black_onyx"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+follow_imports_for_stubs = true
+
+[[tool.mypy.overrides]]
+module = ["numpy", "numpy.*", "yaml", "markdown", "bleach"]
+follow_imports = "skip"
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[tool.uv.sources]
+black-onyx-contracts = { workspace = true }
+# CUDA wheels still fall back to CPU at runtime when no GPU is present; they are
+# required for host NVIDIA GPUs (e.g. RTX 4060 Ti) and Docker --gpus passthrough.
+# cu126 matches current torch 2.13 wheels and works with newer host drivers.
+torch = { index = "pytorch-cu126" }
+torchvision = { index = "pytorch-cu126" }
+
+[tool.uv.workspace]
+members = [
+  "packages/black_onyx_contracts",
+  "packages/black_onyx_otel",
+  "packages/black_onyx_vector",
+  "packages/black_onyx_calibration",
+]

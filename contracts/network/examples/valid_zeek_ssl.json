@@ -1,0 +1,14 @@
+{
+  "event_type": "zeek.ssl",
+  "uid": "C1234567890abcdef",
+  "ts": 1720000000.2,
+  "server_name": "api.example.com",
+  "ja3": "a0e9f5d64349fb13191bc781f81f42d1",
+  "ja4": "t13d1516h2_8daaf6152771_b0da82dd1658",
+  "version": "TLSv12",
+  "cipher": "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+  "id_orig_h_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "id_resp_h_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "sensor_id": "sensor-edge-01",
+  "asset_id": "host-web-01"
+}

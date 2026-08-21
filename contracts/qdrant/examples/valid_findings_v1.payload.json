@@ -1,0 +1,18 @@
+{
+  "tenant_id": "tenant-demo",
+  "finding_id": "finding-1",
+  "finding_type": "log_anomaly",
+  "modality": "log",
+  "asset_id": "host-1",
+  "service_id": null,
+  "calibrated_score": 0.91,
+  "severity_hint": "high",
+  "incident_id": null,
+  "mitre_techniques": ["T1059"],
+  "summary_text": "Suspicious process burst",
+  "occurred_at": "2026-07-27T15:00:00Z",
+  "occurred_at_ts": 1753628400,
+  "embed_model": "cisco-ai/SecureBERT2.0-biencoder",
+  "embed_version": "securebert2.0-biencoder",
+  "schema_version": "1.0"
+}

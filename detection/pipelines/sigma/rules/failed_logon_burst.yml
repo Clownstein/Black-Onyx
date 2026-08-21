@@ -1,0 +1,22 @@
+title: Failed Logon Burst
+id: aa-failed-logon-burst
+status: stable
+level: high
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID:
+      - 4625
+  condition: selection
+  burst:
+    field: TargetUserName
+    count: 5
+    window_seconds: 120
+mitre_techniques:
+  - T1110
+  - T1110.001
+falsepositives:
+  - Misconfigured service accounts
+  - Users mistyping passwords

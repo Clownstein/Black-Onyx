@@ -1,0 +1,21 @@
+pack_id: fedramp-mod-cert
+kind: certification
+version: "1.0"
+title: FedRAMP Moderate family crosswalk
+description: Evidence assistance for FedRAMP Moderate families.
+checks:
+  - check_id: fedramp.ac-2
+    title: Account management
+    surfaces: [identity]
+    automation: hybrid
+    severity_default: high
+  - check_id: fedramp.au-2
+    title: Audit events
+    surfaces: [host]
+    automation: auto
+    severity_default: high
+  - check_id: fedramp.si-4
+    title: Information system monitoring
+    surfaces: [network, host]
+    automation: auto
+    severity_default: high

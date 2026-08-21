@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/schemas/code_change.json",
+  "title": "CodeChange",
+  "description": "Code change / PR diff payload (ANOMALY_DETECTION_PLATFORM.md §5.4).",
+  "type": "object",
+  "required": ["event_type", "repository_id", "head_commit"],
+  "properties": {
+    "event_type": { "const": "code.change" },
+    "repository_id": { "type": "string", "minLength": 1 },
+    "provider": { "type": ["string", "null"] },
+    "repository_url_hash": { "type": ["string", "null"] },
+    "default_branch": { "type": ["string", "null"] },
+    "base_commit": { "type": ["string", "null"] },
+    "head_commit": { "type": "string", "minLength": 1 },
+    "pull_request_number": { "type": ["integer", "null"] },
+    "author_id_hash": { "type": ["string", "null"] },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "status"],
+        "properties": {
+          "path": { "type": "string" },
+          "language": { "type": "string" },
+          "status": { "type": "string" },
+          "additions": { "type": "integer" },
+          "deletions": { "type": "integer" },
+          "diff": { "type": "string" },
+          "changed_functions": {
+            "type": "array",
+            "items": { "type": "object" }
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "scanner_findings": {
+      "type": "array",
+      "items": { "type": "object" }
+    }
+  },
+  "additionalProperties": true
+}

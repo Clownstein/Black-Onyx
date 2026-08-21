@@ -1,0 +1,70 @@
+pack_id: iso-27001
+kind: framework
+version: '2022'
+title: ISO/IEC 27001
+extends_surfaces:
+- network
+- host
+- webapp
+- identity
+- cloud
+- code
+checks:
+- check_id: iso.27001.isms.scope
+  title: ISMS scope defined
+  surfaces:
+  - identity
+  automation: manual
+  severity_default: medium
+  evidence_types:
+  - attestation
+- check_id: iso.27001.network.segregation
+  title: Network segregation between trust zones
+  surfaces:
+  - network
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - cross_zone_flow
+- check_id: iso.27001.host.hardening
+  title: Hardened OS baselines
+  surfaces:
+  - host
+  automation: hybrid
+  severity_default: high
+  evidence_types:
+  - detector_hit
+- check_id: iso.27001.app.secrets
+  title: No hardcoded secrets in repos
+  surfaces:
+  - code
+  automation: auto
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+  bindings:
+    scanners:
+    - secrets-scan
+- check_id: iso.27001.app.injection
+  title: Injection-resistant queries
+  surfaces:
+  - code
+  - webapp
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    scanners:
+    - owasp-injection
+- check_id: iso.27001.supplier.clauses
+  title: Supplier security clauses
+  surfaces:
+  - cloud
+  automation: manual
+  severity_default: medium
+  evidence_types:
+  - attestation

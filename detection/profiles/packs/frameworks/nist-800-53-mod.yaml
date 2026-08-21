@@ -1,0 +1,80 @@
+pack_id: nist-800-53-mod
+kind: framework
+version: rev5-mod
+title: NIST SP 800-53 Moderate / FedRAMP Moderate
+extends_surfaces:
+- network
+- host
+- webapp
+- identity
+- cloud
+- code
+checks:
+- check_id: nist.ac.least-privilege
+  title: Least privilege and account types managed
+  surfaces:
+  - identity
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+- check_id: nist.ia.mfa
+  title: MFA for network and privileged access
+  surfaces:
+  - identity
+  automation: auto
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+  mitre_techniques:
+  - T1110
+- check_id: nist.au.logging
+  title: Auditable events logged and retained
+  surfaces:
+  - host
+  - network
+  - identity
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - log_source_silent
+- check_id: nist.cm.baselines
+  title: Baseline configurations with integrity monitoring
+  surfaces:
+  - host
+  - cloud
+  automation: hybrid
+  severity_default: high
+  evidence_types:
+  - detector_hit
+- check_id: nist.sc.boundary
+  title: Boundary protection and subnetworks
+  surfaces:
+  - network
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - cross_zone_flow
+- check_id: nist.si.malware
+  title: Malicious code protection
+  surfaces:
+  - host
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+- check_id: nist.sr.supply-chain
+  title: Supply-chain risk for critical components
+  surfaces:
+  - cloud
+  - code
+  automation: manual
+  severity_default: medium
+  evidence_types:
+  - attestation

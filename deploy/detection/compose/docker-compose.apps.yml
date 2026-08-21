@@ -1,0 +1,806 @@
+# Application services for Black Onyx detection plane.
+# Included by root docker-compose.detection-apps.yml (preferred entrypoint).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.platform.yml \
+#     -f docker-compose.detection-apps.yml up -d --build
+#
+# Build context paths are relative to this file (repo root = ../../..).
+# Kafka: redpanda:9092. Postgres: anomaly @ postgres:5432
+
+x-kafka-env: &kafka-env
+  KAFKA_BROKERS: redpanda:9092
+  KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+
+x-app-defaults: &app-defaults
+  restart: unless-stopped
+  cpus: ${APP_CPU_LIMIT:-1.5}
+  mem_limit: ${APP_MEMORY_LIMIT:-1g}
+  pids_limit: 512
+  networks:
+    - default
+
+services:
+  ingestion-gateway:
+    <<: *app-defaults
+    networks: [default]
+    build:
+      context: ../../..
+      dockerfile: services/ingestion-gateway/Dockerfile
+    container_name: blackonyx-ingestion-gateway
+    environment:
+      <<: *kafka-env
+      API_KEYS: ${API_KEYS:-}
+      LISTEN_ADDR: ":8080"
+      MALWARE_TRIAGE_URL: http://malware-triage:8112
+      MALWARE_SERVICE_API_KEY: ${MALWARE_SERVICE_API_KEY:-dev-malware-key}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_PCAP_BUCKET: pcap-artifacts
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
+      malware-triage:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "/wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  asset-registry:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: services/asset-registry/Dockerfile
+    container_name: blackonyx-asset-registry
+    command:
+      - sh
+      - -c
+      - alembic upgrade head && exec uvicorn asset_registry.main:app --host 0.0.0.0 --port 8081
+    environment:
+      ASSET_REGISTRY_DATABASE_URL: postgresql+psycopg://anomaly:${POSTGRES_PASSWORD:-anomaly}@postgres:5432/asset_registry
+      ASSET_REGISTRY_HOST: "0.0.0.0"
+      ASSET_REGISTRY_PORT: "8081"
+      OIDC_DISABLED: "false"
+      OIDC_HS_SECRET: ${BLACK_ONYX_AUTH_SECRET:?set BLACK_ONYX_AUTH_SECRET}
+      ASSET_REGISTRY_SERVICE_KEY: ${ASSET_REGISTRY_SERVICE_KEY:-dev-service-key}
+      ASSET_REGISTRY_INCIDENT_API_URL: http://incident-api:8083
+      ASSET_REGISTRY_INCIDENT_API_SERVICE_KEY: ${INCIDENT_API_SERVICE_KEY:-dev-service-key}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  threat-intel-service:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: services/threat-intel-service/Dockerfile
+    container_name: blackonyx-threat-intel-service
+    command: ["sh", "-c", "alembic upgrade head && exec uvicorn threat_intel_service.main:app --host 0.0.0.0 --port 8098"]
+    environment:
+      THREAT_INTEL_DATABASE_URL: postgresql+psycopg://anomaly:${POSTGRES_PASSWORD:-anomaly}@postgres:5432/threat_intel
+      THREAT_INTEL_HOST: "0.0.0.0"
+      THREAT_INTEL_PORT: "8098"
+      THREAT_INTEL_SERVICE_API_KEY: ${THREAT_INTEL_SERVICE_API_KEY:-dev-threat-intel-key}
+      THREAT_INTEL_EMBEDDING_SERVICE_URL: http://embedding-worker:8115
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8098/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  incident-api:
+    <<: *app-defaults
+    networks: [default]
+    build:
+      context: ../../..
+      dockerfile: services/incident-api/Dockerfile
+    container_name: blackonyx-incident-api
+    command:
+      - sh
+      - -c
+      - alembic upgrade head && exec uvicorn incident_api.main:app --host 0.0.0.0 --port 8083
+    environment:
+      INCIDENT_API_DATABASE_URL: postgresql+psycopg://anomaly:${POSTGRES_PASSWORD:-anomaly}@postgres:5432/incident_api
+      INCIDENT_API_HOST: "0.0.0.0"
+      INCIDENT_API_PORT: "8083"
+      OIDC_DISABLED: "false"
+      OIDC_HS_SECRET: ${BLACK_ONYX_AUTH_SECRET:?set BLACK_ONYX_AUTH_SECRET}
+      INCIDENT_API_SERVICE_KEY: ${INCIDENT_API_SERVICE_KEY:-dev-service-key}
+      OPENSEARCH_URL: https://opensearch:9200
+      OPENSEARCH_USERNAME: admin
+      OPENSEARCH_PASSWORD: ${OPENSEARCH_INITIAL_ADMIN_PASSWORD:-AnomalyOS#Admin1}
+      OPENSEARCH_VERIFY_TLS: "false"
+      INCIDENT_API_OPENSEARCH_INDEXING: "true"
+      ALLOW_DEMO_KEYS: ${ALLOW_DEMO_KEYS:-false}
+      THREAT_INTEL_URL: http://threat-intel-service:8098
+      THREAT_INTEL_SERVICE_KEY: ${THREAT_INTEL_SERVICE_API_KEY:-dev-threat-intel-key}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      INCIDENT_API_OPS_LOG_MODEL_URL: http://log-model:8090/health/live
+      INCIDENT_API_OPS_NETWORK_MODEL_URL: http://network-model:8101/health/live
+      INCIDENT_API_OPS_METRICS_MODEL_URL: http://metrics-model:8102/health/live
+      INCIDENT_API_OPS_CODE_MODEL_URL: http://code-model:8103/health/live
+      INCIDENT_API_OPS_INGESTION_GATEWAY_URL: http://ingestion-gateway:8080/health/live
+      INCIDENT_API_OPS_LOG_PROCESSOR_URL: http://log-processor:8082/health/live
+      INCIDENT_API_OPS_FLOW_PROCESSOR_URL: http://flow-processor:8094/health/live
+      INCIDENT_API_OPS_METRICS_PROCESSOR_URL: http://metrics-processor:8095/health/live
+      INCIDENT_API_OPS_CODE_PROCESSOR_URL: http://code-processor:8093/health/live
+      INCIDENT_API_OPS_INFERENCE_WORKER_URL: http://inference-worker:8088/health/live
+      INCIDENT_API_OPS_MODEL_GATEWAY_URL: http://model-gateway:8091/health/live
+      INCIDENT_API_OPS_CORRELATION_ENGINE_URL: http://correlation-engine:8084/health/live
+      INCIDENT_API_OPS_INCIDENT_API_URL: http://incident-api:8083/health/live
+      INCIDENT_API_OPS_PROMETHEUS_URL: http://prometheus:9090
+      INCIDENT_API_EMBEDDING_SERVICE_URL: http://embedding-worker:8115
+      INCIDENT_API_DEPLOYMENT_CONSUMER_ENABLED: "true"
+      INCIDENT_API_KAFKA_BROKERS: redpanda:9092
+      INCIDENT_API_DEPLOYMENT_TOPIC: deployments.raw
+      INCIDENT_API_DEPLOYMENT_DLQ_TOPIC: deployments.raw.dlq
+      SECURITY_PROFILES_ROOT: /app/profiles
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+      opensearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8083/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  smoke-consumer:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: services/smoke-consumer/Dockerfile
+    container_name: blackonyx-smoke-consumer
+    environment:
+      <<: *kafka-env
+      SMOKE_DATABASE_URL: postgresql+psycopg://anomaly:${POSTGRES_PASSWORD:-anomaly}@postgres:5432/smoke
+      SMOKE_TOPIC: logs.raw
+      SMOKE_PORT: "8087"
+    command: ["sh", "-c", "alembic upgrade head && exec uvicorn smoke_consumer.main:app --host 0.0.0.0 --port 8087"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8087/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  log-processor:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: services/log-processor/Dockerfile
+    container_name: blackonyx-log-processor
+    environment:
+      LOG_PROCESSOR_KAFKA_BROKERS: redpanda:9092
+      LOG_PROCESSOR_PORT: "8082"
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8082/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  flow-processor:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: services/flow-processor/Dockerfile
+    container_name: blackonyx-flow-processor
+    environment:
+      FLOW_PROCESSOR_KAFKA_BROKERS: redpanda:9092
+      FLOW_PROCESSOR_PORT: "8094"
+      FLOW_PROCESSOR_ENABLE_KAFKA: "true"
+    command: ["uvicorn", "flow_processor.main:app", "--host", "0.0.0.0", "--port", "8094"]
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8094/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  metrics-processor:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: services/metrics-processor/Dockerfile
+    container_name: blackonyx-metrics-processor
+    environment:
+      METRICS_PROCESSOR_KAFKA_BROKERS: redpanda:9092
+      METRICS_PROCESSOR_PORT: "8095"
+      METRICS_PROCESSOR_ENABLE_KAFKA: "true"
+    command: ["uvicorn", "metrics_processor.main:app", "--host", "0.0.0.0", "--port", "8095"]
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8095/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  code-processor:
+    <<: *app-defaults
+    # CodeQL's evaluator requires a larger heap than the common 1 GiB service
+    # limit; Semgrep-only deployments still remain well below this ceiling.
+    mem_limit: ${CODE_PROCESSOR_MEMORY_LIMIT:-2g}
+    build:
+      context: ../../..
+      dockerfile: services/code-processor/Dockerfile
+    container_name: blackonyx-code-processor
+    environment:
+      CODE_PROCESSOR_KAFKA_BROKERS: redpanda:9092
+      CODE_PROCESSOR_PORT: "8093"
+      CODE_PROCESSOR_ENABLE_KAFKA: "true"
+      CODE_PROCESSOR_HEURISTIC_ENABLED: "false"
+      CODE_PROCESSOR_SEMGREP_ENABLED: "true"
+      CODE_PROCESSOR_CODEQL_ENABLED: ${CODE_PROCESSOR_CODEQL_ENABLED:-false}
+      CODE_PROCESSOR_CODEQL_RAM_MB: ${CODE_PROCESSOR_CODEQL_RAM_MB:-1024}
+      SEMGREP_CONFIG: auto
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8093/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  code-enrichment-worker:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: services/code-enrichment-worker/Dockerfile
+    container_name: blackonyx-code-enrichment-worker
+    environment:
+      CODE_ENRICHMENT_KAFKA_BROKERS: redpanda:9092
+      CODE_ENRICHMENT_PORT: "8110"
+      CODE_ENRICHMENT_ENABLE_KAFKA: "true"
+      CODE_ENRICHMENT_INCIDENT_API_URL: http://incident-api:8083
+      CODE_ENRICHMENT_INCIDENT_API_SERVICE_KEY: ${INCIDENT_API_SERVICE_KEY:-dev-service-key}
+      # Optional: set ANTARES_ENDPOINT to enable model loop; unset = plan/CWE-only degraded OK
+      ANTARES_ENDPOINT: ${ANTARES_ENDPOINT:-}
+      CODE_ENRICHMENT_ANTARES_CLI_SRC: /opt/antares-cli/src
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+      incident-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8110/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  embedding-worker:
+    <<: *app-defaults
+    cpus: ${EMBEDDING_CPU_LIMIT:-2.0}
+    mem_limit: ${EMBEDDING_MEMORY_LIMIT:-4g}
+    profiles: ["vector"]
+    build:
+      context: ../../..
+      dockerfile: services/embedding-worker/Dockerfile
+    container_name: blackonyx-embedding-worker
+    environment:
+      <<: *kafka-env
+      EMBEDDING_KAFKA_BROKERS: redpanda:9092
+      EMBEDDING_PORT: "8115"
+      EMBEDDING_ENABLE_KAFKA: "false"
+      # Vector search off by default; flip to "true" (with --profile vector) to enable.
+      VECTOR_SEARCH_ENABLED: ${VECTOR_SEARCH_ENABLED:-false}
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+      # Test fake is opt-in only. Real model failures surface as degraded.
+    command: ["uvicorn", "embedding_worker.main:app", "--host", "0.0.0.0", "--port", "8115"]
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8115/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  profile-evaluator:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: services/profile-evaluator/Dockerfile
+    container_name: blackonyx-profile-evaluator
+    environment:
+      PROFILE_EVALUATOR_PORT: "8116"
+      PROFILE_EVALUATOR_ENABLE_LOOP: "false"
+      PROFILE_EVALUATOR_INCIDENT_API_URL: http://incident-api:8083
+      PROFILE_EVALUATOR_INCIDENT_API_SERVICE_KEY: ${INCIDENT_API_SERVICE_KEY:-dev-service-key}
+      VECTOR_NOVELTY_ENABLED: "false"
+      PROFILE_EVALUATOR_EMBEDDING_SERVICE_URL: http://embedding-worker:8115
+      PROFILE_EVALUATOR_QDRANT_URL: http://qdrant:6333
+    depends_on:
+      incident-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8116/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  host-state-processor:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: services/host-state-processor/Dockerfile
+    container_name: blackonyx-host-state-processor
+    environment:
+      HOST_STATE_PROCESSOR_KAFKA_BROKERS: redpanda:9092
+      HOST_STATE_PROCESSOR_PORT: "8097"
+      HOST_STATE_PROCESSOR_ENABLE_KAFKA: "true"
+      HOST_STATE_PROCESSOR_PUBLISH_FINDINGS: "true"
+      # Telemetry-gap detection: alerts when an enrolled asset stops reporting.
+      # Off unless enabled, so existing deployments keep current behavior.
+      HOST_STATE_PROCESSOR_ENABLE_HEARTBEAT: ${SELF_MONITOR_HEARTBEAT:-false}
+      HOST_STATE_PROCESSOR_HEARTBEAT_TENANT_IDS: ${SELF_MONITOR_TENANT_ID:-tenant-demo}
+      HOST_STATE_PROCESSOR_STALE_AFTER_SECONDS: ${SELF_MONITOR_STALE_AFTER_SECONDS:-900}
+      HOST_STATE_PROCESSOR_ASSET_REGISTRY_URL: http://asset-registry:8081
+      HOST_STATE_PROCESSOR_ASSET_REGISTRY_SERVICE_KEY: ${ASSET_REGISTRY_SERVICE_KEY:-dev-service-key}
+    command: ["uvicorn", "host_state_processor.main:app", "--host", "0.0.0.0", "--port", "8097"]
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8097/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  firewall-processor:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: services/firewall-processor/Dockerfile
+    container_name: blackonyx-firewall-processor
+    environment:
+      FIREWALL_PROCESSOR_KAFKA_BROKERS: redpanda:9092
+      FIREWALL_PROCESSOR_PORT: "8099"
+      FIREWALL_PROCESSOR_ENABLE_KAFKA: "true"
+      FIREWALL_PROCESSOR_PUBLISH_FINDINGS: "true"
+    command: ["uvicorn", "firewall_processor.main:app", "--host", "0.0.0.0", "--port", "8099"]
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8099/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  ids-processor:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: services/ids-processor/Dockerfile
+    container_name: blackonyx-ids-processor
+    environment:
+      IDS_PROCESSOR_KAFKA_BROKERS: redpanda:9092
+      IDS_PROCESSOR_PORT: "8100"
+      IDS_PROCESSOR_ENABLE_KAFKA: "true"
+      IDS_PROCESSOR_PUBLISH_FINDINGS: "true"
+    command: ["uvicorn", "ids_processor.main:app", "--host", "0.0.0.0", "--port", "8100"]
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8100/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  integration-hub:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: services/integration-hub/Dockerfile
+    container_name: blackonyx-integration-hub
+    environment:
+      INTEGRATION_HUB_HOST: "0.0.0.0"
+      INTEGRATION_HUB_PORT: "8105"
+      INTEGRATION_HUB_DATABASE_URL: postgresql+psycopg://anomaly:${POSTGRES_PASSWORD:-anomaly}@postgres:5432/integration_hub
+      INTEGRATION_HUB_API_KEY: ${INTEGRATION_HUB_API_KEY:-dev-integration-key}
+      INTEGRATION_HUB_THREAT_INTEL_URL: http://threat-intel-service:8098
+      INTEGRATION_HUB_THREAT_INTEL_SERVICE_KEY: ${THREAT_INTEL_SERVICE_API_KEY:-dev-threat-intel-key}
+      INTEGRATION_HUB_INCIDENT_API_URL: http://incident-api:8083
+      INTEGRATION_HUB_INCIDENT_API_SERVICE_KEY: ${INCIDENT_API_SERVICE_KEY:-dev-service-key}
+      INTEGRATION_HUB_PERSIST_FINDINGS: "true"
+      INTEGRATION_HUB_RESPONSE_ORCHESTRATOR_URL: http://response-orchestrator:8111
+      INTEGRATION_HUB_RESPONSE_ORCHESTRATOR_API_KEY: ${RESPONSE_ORCHESTRATOR_API_KEY:-dev-response-key}
+    command: ["sh", "-c", "alembic upgrade head && exec uvicorn integration_hub.main:app --host 0.0.0.0 --port 8105"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      threat-intel-service:
+        condition: service_healthy
+      response-orchestrator:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8105/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  response-orchestrator:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: services/response-orchestrator/Dockerfile
+    container_name: blackonyx-response-orchestrator
+    environment:
+      RESPONSE_ORCHESTRATOR_HOST: "0.0.0.0"
+      RESPONSE_ORCHESTRATOR_PORT: "8111"
+      RESPONSE_ORCHESTRATOR_DATABASE_URL: postgresql+psycopg://anomaly:${POSTGRES_PASSWORD:-anomaly}@postgres:5432/response_orchestrator
+      RESPONSE_ORCHESTRATOR_API_KEY: ${RESPONSE_ORCHESTRATOR_API_KEY:-dev-response-key}
+      RESPONSE_ORCHESTRATOR_APPROVER_API_KEY: ${RESPONSE_ORCHESTRATOR_APPROVER_API_KEY:-}
+      RESPONSE_ORCHESTRATOR_DRY_RUN_DEFAULT: "true"
+      RESPONSE_ORCHESTRATOR_PLAYBOOKS_DIR: /playbooks
+    command: ["sh", "-c", "alembic upgrade head && exec uvicorn response_orchestrator.main:app --host 0.0.0.0 --port 8111"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8111/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  malware-triage:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: services/malware-triage/Dockerfile
+    container_name: blackonyx-malware-triage
+    environment:
+      <<: *kafka-env
+      MALWARE_TRIAGE_KAFKA_BROKERS: redpanda:9092
+      MALWARE_TRIAGE_PORT: "8112"
+      MALWARE_TRIAGE_ENABLE_KAFKA: "true"
+      MALWARE_TRIAGE_API_KEY: ${MALWARE_SERVICE_API_KEY:-dev-malware-key}
+      MALWARE_TRIAGE_MINIO_ENDPOINT: http://minio:9000
+      MALWARE_TRIAGE_ALLOW_HEURISTIC_FALLBACK: "false"
+      MALWARE_TRIAGE_CAPA_BIN: /usr/local/bin/capa
+      MALWARE_TRIAGE_FLOSS_BIN: /usr/local/bin/floss
+      MALWARE_TRIAGE_CLAMSCAN_BIN: /usr/bin/clamscan
+      MALWARE_TRIAGE_EMBER_ONNX_PATH: /packages/malware-static/artifacts/ember_pe.onnx
+    command: ["uvicorn", "malware_triage.main:app", "--host", "0.0.0.0", "--port", "8112"]
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8112/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  malware-orchestrator:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: services/malware-orchestrator/Dockerfile
+    container_name: blackonyx-malware-orchestrator
+    environment:
+      <<: *kafka-env
+      MALWARE_ORCHESTRATOR_KAFKA_BROKERS: redpanda:9092
+      MALWARE_ORCHESTRATOR_PORT: "8113"
+      MALWARE_ORCHESTRATOR_ENABLE_KAFKA: "true"
+      MALWARE_ORCHESTRATOR_API_KEY: ${MALWARE_SERVICE_API_KEY:-dev-malware-key}
+      MALWARE_ORCHESTRATOR_CAPE_URL: ${CAPE_URL:-}
+      MALWARE_ORCHESTRATOR_DRAKVUF_URL: ${DRAKVUF_URL:-}
+      MALWARE_ORCHESTRATOR_DRAKVUF_TOKEN: ${DRAKVUF_TOKEN:-}
+      MALWARE_ORCHESTRATOR_MISP_WEBHOOK_URL: ${MISP_MALWARE_WEBHOOK_URL:-}
+      MALWARE_ORCHESTRATOR_MISP_API_KEY: ${MISP_API_KEY:-}
+      MALWARE_ORCHESTRATOR_OPENCTI_WEBHOOK_URL: ${OPENCTI_MALWARE_WEBHOOK_URL:-}
+      MALWARE_ORCHESTRATOR_OPENCTI_TOKEN: ${OPENCTI_TOKEN:-}
+      MALWARE_ORCHESTRATOR_MINIO_ENDPOINT: http://minio:9000
+    command: ["uvicorn", "malware_orchestrator.main:app", "--host", "0.0.0.0", "--port", "8113"]
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8113/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  malware-processor:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: services/malware-processor/Dockerfile
+    container_name: blackonyx-malware-processor
+    environment:
+      <<: *kafka-env
+      MALWARE_PROCESSOR_KAFKA_BROKERS: redpanda:9092
+      MALWARE_PROCESSOR_PORT: "8114"
+      MALWARE_PROCESSOR_ENABLE_KAFKA: "true"
+      MALWARE_PROCESSOR_PUBLISH_FINDINGS: "true"
+    command: ["uvicorn", "malware_processor.main:app", "--host", "0.0.0.0", "--port", "8114"]
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8114/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  log-model:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: detection/models/log-model/Dockerfile
+    container_name: blackonyx-log-model
+    volumes:
+      - ${BLACK_ONYX_LOG_MODEL_ARTIFACTS_DIR:-./detection/models/log-model/artifacts}:/app/artifacts:ro
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health/live')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  network-model:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: detection/models/network-model/Dockerfile
+    container_name: blackonyx-network-model
+    volumes:
+      - ${BLACK_ONYX_NETWORK_MODEL_ARTIFACTS_DIR:-./detection/models/network-model/artifacts}:/app/artifacts:ro
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8101/health/live')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  metrics-model:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: detection/models/metrics-model/Dockerfile
+    container_name: blackonyx-metrics-model
+    volumes:
+      - ${BLACK_ONYX_METRICS_MODEL_ARTIFACTS_DIR:-./detection/models/metrics-model/artifacts}:/app/artifacts:ro
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8102/health/live')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  code-model:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: detection/models/code-model/Dockerfile
+    container_name: blackonyx-code-model
+    volumes:
+      - ${BLACK_ONYX_CODE_MODEL_ARTIFACTS_DIR:-./detection/models/code-model/artifacts}:/app/artifacts:ro
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8103/health/live')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  host-state-model:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: detection/models/host-state-model/Dockerfile
+    container_name: blackonyx-host-state-model
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8104/health/live')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  model-gateway:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: services/model-gateway/Dockerfile
+    container_name: blackonyx-model-gateway
+    environment:
+      LOG_MODEL_URL: http://log-model:8090
+      NETWORK_MODEL_URL: http://network-model:8101
+      METRICS_MODEL_URL: http://metrics-model:8102
+      CODE_MODEL_URL: http://code-model:8103
+      HOST_STATE_MODEL_URL: http://host-state-model:8104
+    depends_on:
+      - log-model
+      - network-model
+      - metrics-model
+      - code-model
+      - host-state-model
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8091/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  inference-worker:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: services/inference-worker/Dockerfile
+    container_name: blackonyx-inference-worker
+    environment:
+      <<: *kafka-env
+      INFER_KAFKA_BROKERS: redpanda:9092
+      INFER_MODEL_GATEWAY_URL: http://model-gateway:8091
+      INFER_INCIDENT_API_URL: http://incident-api:8083
+      INFER_INCIDENT_API_SERVICE_KEY: ${INCIDENT_API_SERVICE_KEY:-dev-service-key}
+      INFER_PERSIST_FINDINGS: "true"
+      INFER_USE_MODEL_GATEWAY: "true"
+      INFER_HOST_STATE_MODEL_URL: http://host-state-model:8104
+      INFER_PORT: "8088"
+      INFER_HOST: "0.0.0.0"
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+      model-gateway:
+        condition: service_healthy
+      host-state-model:
+        condition: service_started
+      incident-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8088/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  correlation-engine:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: services/correlation-engine/Dockerfile
+    container_name: blackonyx-correlation-engine
+    environment:
+      CORRELATION_KAFKA_BROKERS: redpanda:9092
+      CORRELATION_FINDING_TOPICS: findings.logs,findings.code,findings.network,findings.metrics,findings.host-state,findings.firewall,findings.malware
+      CORRELATION_INCIDENT_API_URL: http://incident-api:8083
+      CORRELATION_INCIDENT_API_SERVICE_KEY: ${INCIDENT_API_SERVICE_KEY:-dev-service-key}
+      CORRELATION_NOTIFICATION_URL: http://notification-service:8086/api/v1/notifications/incident
+      CORRELATION_NOTIFICATION_API_KEY: ${NOTIFICATION_API_KEY:-}
+      CORRELATION_REDIS_URL: redis://:${REDIS_PASSWORD:-anomaly-redis-lab}@redis:6379/0
+      CORRELATION_THREAT_INTEL_URL: http://threat-intel-service:8098
+      CORRELATION_THREAT_INTEL_SERVICE_KEY: ${THREAT_INTEL_SERVICE_API_KEY:-dev-threat-intel-key}
+      CORRELATION_VECTOR_SEARCH_ENABLED: ${VECTOR_SEARCH_ENABLED:-false}
+      CORRELATION_QDRANT_URL: http://qdrant:6333
+      CORRELATION_EMBEDDING_SERVICE_URL: http://embedding-worker:8115
+      CORRELATION_PORT: "8084"
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      incident-api:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+      threat-intel-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8084/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  notification-service:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: services/notification-service/Dockerfile
+    container_name: blackonyx-notification-service
+    environment:
+      NOTIFICATION_DATABASE_URL: postgresql+psycopg://anomaly:${POSTGRES_PASSWORD:-anomaly}@postgres:5432/notification_service
+      NOTIFICATION_WEBHOOK_URL: ${NOTIFICATION_WEBHOOK_URL:-}
+      NOTIFICATION_WEBHOOK_SECRET: ${NOTIFICATION_WEBHOOK_SECRET:-dev-webhook-secret}
+      NOTIFICATION_API_KEY: ${NOTIFICATION_API_KEY:-}
+    command: ["sh", "-c", "alembic upgrade head && exec uvicorn notification_service.main:app --host 0.0.0.0 --port 8086"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8086/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  training-orchestrator:
+    <<: *app-defaults
+    build:
+      context: ../../..
+      dockerfile: services/training-orchestrator/Dockerfile
+    container_name: blackonyx-training-orchestrator
+    environment:
+      TRAINING_ORCHESTRATOR_PORT: "8096"
+      TRAINING_ORCHESTRATOR_DATABASE_URL: postgresql+psycopg://anomaly:${POSTGRES_PASSWORD:-anomaly}@postgres:5432/training_orchestrator
+      TRAINING_ORCHESTRATOR_ARTIFACT_SIGNING_KEY: ${TRAINING_ARTIFACT_SIGNING_KEY:-dev-signing-key-change-me}
+      TRAINING_ORCHESTRATOR_REPO_ROOT: /repo
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    volumes:
+      - ../../..:/repo:ro
+    command: ["sh", "-c", "alembic upgrade head && exec uvicorn training_orchestrator.main:app --host 0.0.0.0 --port 8096"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mlflow:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8096/health/live')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 10

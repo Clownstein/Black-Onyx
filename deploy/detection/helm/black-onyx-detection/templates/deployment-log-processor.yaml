@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-processor
+  namespace: {{ .Values.namespaces.processing }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: log-processor
+spec:
+  replicas: {{ .Values.logProcessor.replicaCount }}
+  selector:
+    matchLabels:
+      app: log-processor
+  template:
+    metadata:
+      labels:
+        app: log-processor
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: log-processor
+          image: {{ .Values.logProcessor.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.logProcessor.service.port }}
+          resources:
+            {{- toYaml .Values.logProcessor.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.logProcessor.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.logProcessor.service.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: log-processor
+  namespace: {{ .Values.namespaces.processing }}
+spec:
+  selector:
+    app: log-processor
+  ports:
+    - port: {{ .Values.logProcessor.service.port }}
+      targetPort: {{ .Values.logProcessor.service.port }}

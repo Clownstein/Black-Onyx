@@ -1,0 +1,109 @@
+pack_id: mitre-attack-core
+kind: framework
+version: '16.1'
+title: MITRE ATT&CK Core Detection Coverage
+extends_surfaces:
+- network
+- host
+- webapp
+- identity
+- code
+checks:
+- check_id: mitre.t1046
+  title: Network Service Discovery detections
+  surfaces:
+  - network
+  automation: auto
+  severity_default: medium
+  evidence_types:
+  - detector_hit
+  mitre_techniques:
+  - T1046
+  bindings:
+    detectors:
+    - port_scan_heuristic
+    - failed_connection_burst
+- check_id: mitre.t1071
+  title: Application Layer Protocol / C2-like flows
+  surfaces:
+  - network
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  mitre_techniques:
+  - T1071
+  bindings:
+    detectors:
+    - beaconing_heuristic
+    - new_external_peer
+    - network-model
+- check_id: mitre.t1110
+  title: Brute Force detections
+  surfaces:
+  - identity
+  - host
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  mitre_techniques:
+  - T1110
+  bindings:
+    detectors:
+    - sigma:failed_logon_burst
+- check_id: mitre.t1059
+  title: Command and scripting interpreter anomalies
+  surfaces:
+  - host
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  mitre_techniques:
+  - T1059.001
+  bindings:
+    detectors:
+    - suspicious_parent_child
+    - sigma:proc_powershell_encoded
+- check_id: mitre.t1053
+  title: Scheduled Task persistence
+  surfaces:
+  - host
+  automation: auto
+  severity_default: medium
+  evidence_types:
+  - detector_hit
+  mitre_techniques:
+  - T1053.005
+  bindings:
+    detectors:
+    - sigma:rare_scheduled_task
+- check_id: mitre.t1547
+  title: Boot or Logon Autostart
+  surfaces:
+  - host
+  automation: auto
+  severity_default: medium
+  evidence_types:
+  - detector_hit
+  mitre_techniques:
+  - T1547
+  bindings:
+    detectors:
+    - rare_binary_path
+- check_id: mitre.t1190
+  title: Exploit Public-Facing Application
+  surfaces:
+  - webapp
+  - network
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  mitre_techniques:
+  - T1190
+  bindings:
+    detectors:
+    - deny_spike
+    - vuln_ingest

@@ -1,0 +1,51 @@
+pack_id: otar-export
+kind: industry
+version: '2026'
+title: Manufacturing OT / ITAR-EAR Overlay
+recommended_backbone:
+- cis-v8-ig2
+- zero-trust
+extends_surfaces:
+- network
+- host
+- identity
+checks:
+- check_id: ot.purdue.seg
+  title: Purdue-style OT/IT segmentation
+  surfaces:
+  - network
+  automation: auto
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - cross_zone_flow
+- check_id: ot.no-direct-internet
+  title: No direct internet from PLCs/HMIs
+  surfaces:
+  - network
+  automation: auto
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - new_external_peer
+- check_id: itar.access-limit
+  title: ITAR/EAR technical data access limited
+  surfaces:
+  - identity
+  - host
+  automation: hybrid
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+- check_id: ot.usb.controls
+  title: USB/removable media controls in plants
+  surfaces:
+  - host
+  automation: hybrid
+  severity_default: high
+  evidence_types:
+  - detector_hit

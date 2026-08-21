@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-model
+  namespace: {{ .Values.namespaces.models }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: log-model
+spec:
+  replicas: {{ .Values.logModel.replicaCount }}
+  selector:
+    matchLabels:
+      app: log-model
+  template:
+    metadata:
+      labels:
+        app: log-model
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: log-model
+          image: {{ .Values.logModel.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.logModel.service.port }}
+          {{- if .Values.logModel.artifactClaimName }}
+          volumeMounts:
+            - name: model-artifacts
+              mountPath: /app/artifacts
+              readOnly: true
+          {{- end }}
+          resources:
+            {{- toYaml .Values.logModel.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.logModel.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.logModel.service.port }}
+      {{- if .Values.logModel.artifactClaimName }}
+      volumes:
+        - name: model-artifacts
+          persistentVolumeClaim:
+            claimName: {{ .Values.logModel.artifactClaimName | quote }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: log-model
+  namespace: {{ .Values.namespaces.models }}
+spec:
+  selector:
+    app: log-model
+  ports:
+    - port: {{ .Values.logModel.service.port }}
+      targetPort: {{ .Values.logModel.service.port }}

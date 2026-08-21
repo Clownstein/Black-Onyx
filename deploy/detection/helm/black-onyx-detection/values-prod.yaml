@@ -1,0 +1,57 @@
+# Production overlay - fail-closed auth; no demo keys in values.
+# Usage:
+#   helm upgrade --install black-onyx-detection . -f values.yaml -f values-prod.yaml
+#
+# Required Secret `black-onyx-detection-secrets` keys include ingestApiKeys,
+# incidentApiServiceKey, assetRegistryServiceKey, malwareServiceApiKey,
+# responseOrchestratorApiKey, and optionally responseApproverApiKey.
+# CAPE URL/token are optional; omitting them keeps malware orchestration non-ready.
+# Configure OIDC issuer, JWKS URL, and audience through the deployment secret.
+# Configure each model's artifactClaimName with a PVC containing reviewed weights;
+# omitting a claim deliberately keeps that model non-ready.
+
+security:
+  oidcDisabled: false
+  allowDemoKeys: false
+  requireServiceKeys: true
+
+featureFlags:
+  externalTiPolling: true
+  airgapMode: false
+  opensearchIndexing: true
+
+opensearch:
+  url: https://opensearch:9200
+
+ingress:
+  enabled: true
+  className: nginx
+  controllerNamespace: ingress-nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    frontend: detection.example.com
+    incidentApi: api.detection.example.com
+    ingestionGateway: ingest.detection.example.com
+  tls:
+    - secretName: black-onyx-edge-tls
+      hosts:
+        - detection.example.com
+        - api.detection.example.com
+        - ingest.detection.example.com
+
+networkPolicy:
+  denyIngressDefault: true
+  allowRules: true
+
+# Production expects real OIDC issuer/JWKS; inject them through Secret/config.
+oidc:
+  issuer: ""
+  audience: ""
+  jwksUrl: ""
+
+malwareProcessor:
+  publishFindings: "true"
+
+responseOrchestrator:
+  dryRunDefault: "true"

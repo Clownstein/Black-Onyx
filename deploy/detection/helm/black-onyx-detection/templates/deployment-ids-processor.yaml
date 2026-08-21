@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ids-processor
+  namespace: {{ .Values.namespaces.processing }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: ids-processor
+spec:
+  replicas: {{ .Values.idsProcessor.replicaCount }}
+  selector:
+    matchLabels:
+      app: ids-processor
+  template:
+    metadata:
+      labels:
+        app: ids-processor
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: ids-processor
+          image: {{ .Values.idsProcessor.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.idsProcessor.service.port }}
+          env:
+            - name: IDS_PROCESSOR_KAFKA_BROKERS
+              value: redpanda:9092
+            - name: IDS_PROCESSOR_PORT
+              value: {{ .Values.idsProcessor.service.port | quote }}
+            - name: IDS_PROCESSOR_ENABLE_KAFKA
+              value: "true"
+            - name: IDS_PROCESSOR_PUBLISH_FINDINGS
+              value: "true"
+          resources:
+            {{- toYaml .Values.idsProcessor.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem }}
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.idsProcessor.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.idsProcessor.service.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ids-processor
+  namespace: {{ .Values.namespaces.processing }}
+spec:
+  selector:
+    app: ids-processor
+  ports:
+    - port: {{ .Values.idsProcessor.service.port }}
+      targetPort: {{ .Values.idsProcessor.service.port }}

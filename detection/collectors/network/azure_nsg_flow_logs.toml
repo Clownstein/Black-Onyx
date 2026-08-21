@@ -1,0 +1,63 @@
+# Vector profile: ship Azure NSG Flow Logs (v2 JSON) to Black Onyx
+# ingestion-gateway.
+# Usage: vector --config detection/collectors/network/azure_nsg_flow_logs.toml
+#
+# Vector has no native Azure Blob Storage source, so NSG flow logs must be
+# streamed out of the storage account rather than polled as blobs. Route them
+# via Azure Diagnostic Settings / Event Grid into an Event Hub, then consume
+# that Event Hub here with Vector's native `kafka` source against the Event
+# Hubs Kafka-compatible endpoint:
+#   https://learn.microsoft.com/azure/event-hubs/event-hubs-for-kafka-ecosystem-overview
+#
+# Parsing is intentionally minimal here: this profile ships each raw NSG blob
+# mostly unparsed under payload.nsg_blob. The actual flowTuple parsing (and
+# its test coverage, including the 1:N fan-out — one blob holds many flow
+# tuples) lives in flow_processor/azure_flow_adapter.py, mirroring how
+# zeek/dns raw payloads are parsed processor-side rather than in Vector.
+#
+# NOTE: ingestion-gateway requires Crockford ULID event_id. Install a ULID
+# generator transform or preprocess; static lab IDs below are placeholders.
+
+[sources.azure_nsg_flow_logs]
+type = "kafka"
+bootstrap_servers = "${AA_AZURE_EVENTHUB_NAMESPACE}.servicebus.windows.net:9093"
+group_id = "black-onyx-flow-processor"
+topics = ["${AA_AZURE_EVENTHUB_NAME}"]
+
+[sources.azure_nsg_flow_logs.sasl]
+enabled = true
+mechanism = "PLAIN"
+username = "$ConnectionString"
+password = "${AA_AZURE_EVENTHUB_CONNECTION_STRING}"
+
+[sources.azure_nsg_flow_logs.tls]
+enabled = true
+
+[transforms.azure_flow_envelope]
+type = "remap"
+inputs = ["azure_nsg_flow_logs"]
+source = '''
+blob = parse_json!(to_string!(.message))
+. = {}
+.schema_version = "1.0"
+.event_id = get_env_var("AA_EVENT_ID_OVERRIDE") ?? "01HXAZUREFLOW0000000000000"
+.event_type = "azure.nsg_flow_log"
+.tenant_id = get_env_var!("AA_TENANT_ID")
+.occurred_at = format_timestamp!(now(), format: "%+")
+.ingested_at = .occurred_at
+.source.collector_id = get_env_var!("AA_COLLECTOR_ID")
+.source.source_type = "azure_nsg_flow_logs"
+.asset.asset_id = get_env_var!("AA_ASSET_ID")
+.payload.event_type = "azure.nsg_flow_log"
+.payload.nsg_blob = blob
+.payload.asset_id = get_env_var!("AA_ASSET_ID")
+'''
+
+[sinks.gateway_azure_flow]
+type = "http"
+inputs = ["azure_flow_envelope"]
+uri = "${AA_GATEWAY_URL:-http://127.0.0.1:8080}/api/v1/ingest/network-flows"
+method = "post"
+encoding.codec = "json"
+request.headers.X-API-Key = "${AA_INGEST_KEY}"
+request.headers.X-Tenant-Id = "${AA_TENANT_ID}"

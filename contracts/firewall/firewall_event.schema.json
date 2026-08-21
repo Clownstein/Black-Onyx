@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/schemas/firewall_event.json",
+  "title": "FirewallEvent",
+  "description": "Normalized firewall allow/deny or rule-change event.",
+  "type": "object",
+  "required": ["event_type", "tenant_id", "occurred_at", "action"],
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "enum": ["firewall.traffic", "firewall.rule_change"]
+    },
+    "tenant_id": { "type": "string", "minLength": 1 },
+    "asset_id": { "type": ["string", "null"] },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "vendor": { "type": ["string", "null"] },
+    "action": {
+      "type": "string",
+      "enum": ["allow", "deny", "drop", "reject", "rule_add", "rule_delete", "rule_modify"]
+    },
+    "src_ip": { "type": ["string", "null"] },
+    "dst_ip": { "type": ["string", "null"] },
+    "src_port": { "type": ["integer", "null"] },
+    "dst_port": { "type": ["integer", "null"] },
+    "protocol": { "type": ["string", "null"] },
+    "rule_id": { "type": ["string", "null"] },
+    "interface": { "type": ["string", "null"] },
+    "message": { "type": ["string", "null"] },
+    "raw": { "type": "object" }
+  },
+  "additionalProperties": true
+}

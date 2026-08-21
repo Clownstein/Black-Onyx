@@ -1,0 +1,105 @@
+# Minimal detection apps for local smoke (ingest → Kafka → Postgres).
+# Full stack: docker-compose.detection-apps.yml
+#
+# Default: no host ports (BFF reaches services on the Compose network).
+# Lab loopback ports: also add -f docker-compose.detection-lab-ports.yml
+#
+#   docker compose -f docker-compose.yml -f docker-compose.platform.yml \
+#     -f docker-compose.detection-core.yml up -d --build
+
+services:
+  ingestion-gateway:
+    build:
+      context: .
+      dockerfile: services/ingestion-gateway/Dockerfile
+    container_name: blackonyx-ingestion-gateway
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      API_KEYS: ${API_KEYS:-}
+      LISTEN_ADDR: ":8080"
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "/wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  smoke-consumer:
+    build:
+      context: .
+      dockerfile: services/smoke-consumer/Dockerfile
+    container_name: blackonyx-smoke-consumer
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      SMOKE_DATABASE_URL: postgresql+psycopg://anomaly:${POSTGRES_PASSWORD:-anomaly}@postgres:5432/smoke
+      SMOKE_TOPIC: logs.raw
+      SMOKE_PORT: "8087"
+    command: ["sh", "-c", "alembic upgrade head && exec uvicorn smoke_consumer.main:app --host 0.0.0.0 --port 8087"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+      redpanda-init:
+        condition: service_completed_successfully
+
+  incident-api:
+    build:
+      context: .
+      dockerfile: services/incident-api/Dockerfile
+    container_name: blackonyx-incident-api
+    command:
+      - sh
+      - -c
+      - alembic upgrade head && exec uvicorn incident_api.main:app --host 0.0.0.0 --port 8083
+    environment:
+      INCIDENT_API_DATABASE_URL: postgresql+psycopg://anomaly:${POSTGRES_PASSWORD:-anomaly}@postgres:5432/incident_api
+      INCIDENT_API_HOST: "0.0.0.0"
+      INCIDENT_API_PORT: "8083"
+      OIDC_DISABLED: "false"
+      OIDC_HS_SECRET: ${BLACK_ONYX_AUTH_SECRET:?set BLACK_ONYX_AUTH_SECRET}
+      INCIDENT_API_SERVICE_KEY: ${INCIDENT_API_SERVICE_KEY:-dev-service-key}
+      INCIDENT_API_OPENSEARCH_INDEXING: "false"
+      ALLOW_DEMO_KEYS: ${ALLOW_DEMO_KEYS:-false}
+      INCIDENT_API_DEPLOYMENT_CONSUMER_ENABLED: "false"
+      SECURITY_PROFILES_ROOT: /app/profiles
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8083/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  asset-registry:
+    build:
+      context: .
+      dockerfile: services/asset-registry/Dockerfile
+    container_name: blackonyx-asset-registry
+    command:
+      - sh
+      - -c
+      - alembic upgrade head && exec uvicorn asset_registry.main:app --host 0.0.0.0 --port 8081
+    environment:
+      ASSET_REGISTRY_DATABASE_URL: postgresql+psycopg://anomaly:${POSTGRES_PASSWORD:-anomaly}@postgres:5432/asset_registry
+      ASSET_REGISTRY_HOST: "0.0.0.0"
+      ASSET_REGISTRY_PORT: "8081"
+      OIDC_DISABLED: "false"
+      OIDC_HS_SECRET: ${BLACK_ONYX_AUTH_SECRET:?set BLACK_ONYX_AUTH_SECRET}
+      ASSET_REGISTRY_SERVICE_KEY: ${ASSET_REGISTRY_SERVICE_KEY:-dev-service-key}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10

@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: embedding-worker
+  namespace: {{ .Values.namespaces.processing }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: embedding-worker
+spec:
+  replicas: {{ .Values.embeddingWorker.replicaCount }}
+  selector:
+    matchLabels:
+      app: embedding-worker
+  template:
+    metadata:
+      labels:
+        app: embedding-worker
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: embedding-worker
+          image: {{ .Values.embeddingWorker.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.embeddingWorker.service.port }}
+          env:
+            - name: EMBEDDING_PORT
+              value: {{ .Values.embeddingWorker.service.port | quote }}
+            - name: EMBEDDING_KAFKA_BROKERS
+              value: redpanda:9092
+            - name: EMBEDDING_ENABLE_KAFKA
+              value: "true"
+            - name: VECTOR_SEARCH_ENABLED
+              value: "true"
+            - name: QDRANT_URL
+              value: http://qdrant:6333
+          resources:
+            {{- toYaml .Values.embeddingWorker.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.embeddingWorker.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.embeddingWorker.service.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: embedding-worker
+  namespace: {{ .Values.namespaces.processing }}
+spec:
+  selector:
+    app: embedding-worker
+  ports:
+    - port: {{ .Values.embeddingWorker.service.port }}
+      targetPort: {{ .Values.embeddingWorker.service.port }}

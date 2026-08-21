@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/qdrant/ti_text_v1.payload.json",
+  "title": "TiTextV1Payload",
+  "type": "object",
+  "required": [
+    "tenant_id",
+    "indicator_id",
+    "source",
+    "text",
+    "embed_model",
+    "embed_version"
+  ],
+  "properties": {
+    "tenant_id": {
+      "type": "string"
+    },
+    "indicator_id": {
+      "type": "string"
+    },
+    "chunk_id": {
+      "type": "string"
+    },
+    "chunk_kind": {
+      "type": "string"
+    },
+    "observable_type": {
+      "type": "string"
+    },
+    "observable_value": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    },
+    "confidence": {
+      "type": "integer"
+    },
+    "tlp": {
+      "type": "string"
+    },
+    "valid_from": {
+      "type": "string"
+    },
+    "valid_until": {
+      "type": "string"
+    },
+    "valid_until_ts": {
+      "type": "integer"
+    },
+    "labels": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "campaigns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "mitre_techniques": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "text": {
+      "type": "string"
+    },
+    "external_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "embed_model": {
+      "type": "string"
+    },
+    "embed_version": {
+      "type": "string"
+    },
+    "schema_version": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

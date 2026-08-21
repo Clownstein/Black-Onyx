@@ -1,0 +1,42 @@
+[project]
+name = "log-model"
+version = "0.1.0"
+description = "Compact log-sequence Transformer training and inference"
+requires-python = ">=3.12"
+dependencies = [
+  "black-onyx-contracts",
+  "black-onyx-calibration",
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "pydantic>=2.9",
+  "pydantic-settings>=2.6",
+  "numpy>=2.0",
+  "torch>=2.4",
+  "onnx>=1.16",
+  "onnxruntime>=1.19",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "httpx>=0.27",
+]
+
+[project.scripts]
+log-model-train = "training.train:main"
+log-model-serve = "inference.app:run"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["training", "inference", "log_model"]
+
+[tool.uv.sources]
+black-onyx-contracts = { path = "../../../packages/black_onyx_contracts" }
+black-onyx-calibration = { path = "../../../packages/black_onyx_calibration" }
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

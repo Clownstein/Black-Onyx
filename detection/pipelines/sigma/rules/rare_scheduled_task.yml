@@ -1,0 +1,22 @@
+title: Rare Scheduled Task Creation
+id: aa-rare-scheduled-task
+status: experimental
+level: medium
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection:
+    EventID:
+      - 4688
+      - 1
+    Image|endswith:
+      - '\schtasks.exe'
+  keywords:
+    - ' /create '
+    - ' /Create '
+  condition: selection
+mitre_techniques:
+  - T1053.005
+falsepositives:
+  - Software installers creating scheduled tasks

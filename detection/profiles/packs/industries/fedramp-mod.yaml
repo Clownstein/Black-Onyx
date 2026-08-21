@@ -1,0 +1,53 @@
+pack_id: fedramp-mod
+kind: industry
+version: mod
+title: Federal / FedRAMP Moderate Overlay
+recommended_backbone:
+- nist-800-53-mod
+- zero-trust
+extends_surfaces:
+- cloud
+- identity
+- network
+- host
+- code
+checks:
+- check_id: fedramp.ssp
+  title: System Security Plan current
+  surfaces:
+  - identity
+  automation: manual
+  severity_default: high
+  evidence_types:
+  - attestation
+- check_id: fedramp.poam
+  title: POA&M hygiene for residual findings
+  surfaces:
+  - identity
+  automation: manual
+  severity_default: high
+  evidence_types:
+  - attestation
+- check_id: fedramp.continous-mon
+  title: Continuous monitoring telemetry
+  surfaces:
+  - host
+  - cloud
+  - network
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - log_source_silent
+    - vuln_ingest
+- check_id: fedramp.fips-crypto
+  title: FIPS-validated crypto where required
+  surfaces:
+  - webapp
+  - cloud
+  automation: hybrid
+  severity_default: high
+  evidence_types:
+  - detector_hit

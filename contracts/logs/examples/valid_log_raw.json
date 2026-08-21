@@ -1,0 +1,15 @@
+{
+  "event_type": "log.raw",
+  "severity": "ERROR",
+  "facility": "auth",
+  "logger": "session.manager",
+  "message": "Failed login for user alice from 10.0.4.21",
+  "structured": {
+    "user": "alice",
+    "source_ip": "10.0.4.21"
+  },
+  "resource": {
+    "process_name": "payments-api",
+    "container_id": "abc123"
+  }
+}

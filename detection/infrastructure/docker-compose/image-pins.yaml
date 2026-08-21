@@ -1,0 +1,32 @@
+# Pinned third-party / base image tags for AutoAnalyzer (no :latest).
+# Prefer digest pins when Docker is available:
+#   uv run python scripts/development/pin_image_digests.py
+#
+# Compose / Dockerfiles currently use the tags below.
+
+python_runtime: python:3.12.11-slim
+golang_builder: golang:1.23.10-alpine
+distroless: gcr.io/distroless/static-debian12:nonroot
+node_builder: node:20.19.3-alpine
+nginx_runtime: nginx:1.27.5-alpine
+
+postgres: postgres:16.9-alpine
+redis: redis:7.4.4-alpine
+redpanda: docker.redpanda.com/redpandadata/redpanda:v24.3.9
+opensearch: opensearchproject/opensearch:2.19.1
+minio: minio/minio:RELEASE.2025-04-22T22-12-26Z
+qdrant: qdrant/qdrant:v1.14.0
+mlflow: ghcr.io/mlflow/mlflow:v2.22.1
+backup_utility: alpine:3.21.3
+
+otel_collector: otel/opentelemetry-collector:0.123.1
+prometheus: prom/prometheus:v3.2.1
+postgres_exporter: prometheuscommunity/postgres-exporter:v0.15.0
+redis_exporter: oliver006/redis_exporter:v1.62.0
+blackbox_exporter: prom/blackbox-exporter:v0.25.0
+alertmanager: prom/alertmanager:v0.28.1
+loki: grafana/loki:3.4.2
+tempo: grafana/tempo:2.7.1
+grafana: grafana/grafana:11.6.0
+alloy: grafana/alloy:v1.7.1
+osquery: osquery/osquery:5.15.0

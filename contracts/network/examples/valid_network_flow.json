@@ -1,0 +1,35 @@
+{
+  "event_type": "network.flow",
+  "sensor_id": "zeek-edge-west",
+  "flow_id": "C8Zexample",
+  "source": {
+    "asset_id": "host-payments-03",
+    "ip_hash": "sha256:src",
+    "zone": "application",
+    "port": 52113
+  },
+  "destination": {
+    "asset_id": "payments-db",
+    "ip_hash": "sha256:dst",
+    "zone": "database",
+    "port": 5432,
+    "country": null,
+    "asn": null
+  },
+  "protocol": "tcp",
+  "service": "postgres",
+  "duration_ms": 92,
+  "bytes_out": 1482,
+  "bytes_in": 9374,
+  "packets_out": 14,
+  "packets_in": 20,
+  "connection_state": "SF",
+  "tls": {
+    "sni": null,
+    "ja3": null,
+    "ja4": null
+  },
+  "dns": null,
+  "zeek_uid": "C8Zexample",
+  "community_id": "1:LQU9qZlK+B5F3Y8c6s0y9w=="
+}

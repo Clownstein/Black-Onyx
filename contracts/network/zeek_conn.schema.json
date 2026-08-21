@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/schemas/zeek_conn.json",
+  "title": "ZeekConn",
+  "description": "Normalized Zeek conn.log record for Black Onyx ingest.",
+  "type": "object",
+  "required": ["event_type", "uid", "id_orig_h_hash", "id_resp_h_hash", "proto"],
+  "properties": {
+    "event_type": { "const": "zeek.conn" },
+    "uid": { "type": "string", "minLength": 1 },
+    "community_id": { "type": ["string", "null"] },
+    "ts": { "type": ["number", "string", "null"] },
+    "id_orig_h_hash": { "type": "string", "minLength": 1 },
+    "id_orig_p": { "type": ["integer", "null"] },
+    "id_resp_h_hash": { "type": "string", "minLength": 1 },
+    "id_resp_p": { "type": ["integer", "null"] },
+    "proto": { "type": "string", "minLength": 1 },
+    "service": { "type": ["string", "null"] },
+    "duration": { "type": ["number", "null"] },
+    "orig_bytes": { "type": ["integer", "null"] },
+    "resp_bytes": { "type": ["integer", "null"] },
+    "conn_state": { "type": ["string", "null"] },
+    "sensor_id": { "type": ["string", "null"] },
+    "asset_id": { "type": ["string", "null"] },
+    "missed_bytes": { "type": ["integer", "null"] },
+    "history": { "type": ["string", "null"] }
+  },
+  "additionalProperties": true
+}

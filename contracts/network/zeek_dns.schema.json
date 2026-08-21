@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/schemas/zeek_dns.json",
+  "title": "ZeekDns",
+  "description": "Normalized Zeek dns.log record for Black Onyx ingest.",
+  "type": "object",
+  "required": ["event_type", "uid", "query"],
+  "properties": {
+    "event_type": { "const": "zeek.dns" },
+    "uid": { "type": "string", "minLength": 1 },
+    "ts": { "type": ["number", "string", "null"] },
+    "query": { "type": "string", "minLength": 1 },
+    "qtype_name": { "type": ["string", "null"] },
+    "rcode_name": { "type": ["string", "null"] },
+    "answers": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "id_orig_h_hash": { "type": ["string", "null"] },
+    "id_resp_h_hash": { "type": ["string", "null"] },
+    "sensor_id": { "type": ["string", "null"] },
+    "asset_id": { "type": ["string", "null"] },
+    "query_length": { "type": ["integer", "null"] },
+    "entropy": { "type": ["number", "null"] }
+  },
+  "additionalProperties": true
+}

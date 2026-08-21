@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "feedback_id": "fb-01J4AZM7D8Q7DJMV9S4V8D2P1K",
+  "tenant_id": "tenant-acme",
+  "incident_id": "inc-01J4AZJ4K9Z4D7B56Y6T9A2R1M",
+  "finding_id": "finding-01J4AZG9J0B0AV2GEZ66Q38KZS",
+  "label": "true_positive",
+  "note": "Confirmed against change ticket and packet capture.",
+  "actor": "analyst@example.com",
+  "created_at": "2026-07-27T14:30:00Z"
+}

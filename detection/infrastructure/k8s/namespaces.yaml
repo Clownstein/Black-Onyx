@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: black-onyx-ingestion
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: black-onyx-processing
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: black-onyx-models
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: black-onyx-application
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: black-onyx-observability
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: black-onyx-training

@@ -1,0 +1,89 @@
+pack_id: nist-csf-2
+kind: framework
+version: '2.0'
+title: NIST Cybersecurity Framework 2.0
+extends_surfaces:
+- network
+- host
+- webapp
+- identity
+- cloud
+- code
+checks:
+- check_id: nist.csf.govern.roles
+  title: Cybersecurity roles and policies documented
+  surfaces:
+  - identity
+  automation: manual
+  severity_default: medium
+  evidence_types:
+  - attestation
+- check_id: nist.csf.identify.assets
+  title: Asset inventory complete
+  surfaces:
+  - network
+  - host
+  - cloud
+  automation: hybrid
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - asset_registry_gap
+    - unauthorized_device
+- check_id: nist.csf.protect.mfa
+  title: MFA for remote and privileged access
+  surfaces:
+  - identity
+  automation: auto
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+  mitre_techniques:
+  - T1110
+  bindings:
+    detectors:
+    - sigma:failed_logon_burst
+- check_id: nist.csf.protect.tls
+  title: TLS 1.2+ on external services
+  surfaces:
+  - webapp
+  - network
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - probe
+  bindings:
+    detectors:
+    - tls_probe_weak
+- check_id: nist.csf.detect.logging
+  title: Centralized logging for auth network servers apps
+  surfaces:
+  - host
+  - network
+  - identity
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - log_source_silent
+- check_id: nist.csf.respond.ir-plan
+  title: Incident response plan with roles
+  surfaces:
+  - identity
+  automation: manual
+  severity_default: high
+  evidence_types:
+  - attestation
+- check_id: nist.csf.recover.backups
+  title: Backups exist and restore tested
+  surfaces:
+  - host
+  - cloud
+  automation: hybrid
+  severity_default: high
+  evidence_types:
+  - detector_hit

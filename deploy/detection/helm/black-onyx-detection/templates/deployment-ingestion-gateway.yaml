@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingestion-gateway
+  namespace: {{ .Values.namespaces.ingestion }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: ingestion-gateway
+spec:
+  replicas: {{ .Values.ingestionGateway.replicaCount }}
+  selector:
+    matchLabels:
+      app: ingestion-gateway
+  template:
+    metadata:
+      labels:
+        app: ingestion-gateway
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: ingestion-gateway
+          image: {{ .Values.ingestionGateway.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.ingestionGateway.service.port }}
+          env:
+            {{- if .Values.security.allowDemoKeys }}
+            # Dev/lab only — prod overlays set allowDemoKeys=false and require Secret.
+            - name: API_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: black-onyx-detection-secrets
+                  key: ingestApiKeys
+                  optional: true
+            {{- else }}
+            - name: API_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: black-onyx-detection-secrets
+                  key: ingestApiKeys
+                  optional: false
+            {{- end }}
+            - name: MALWARE_TRIAGE_URL
+              value: http://malware-triage.{{ .Values.namespaces.processing }}.svc:{{ .Values.malwareTriage.service.port }}
+            - name: MALWARE_SERVICE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: black-onyx-detection-secrets
+                  key: malwareServiceApiKey
+                  optional: {{ .Values.security.allowDemoKeys }}
+          resources:
+            {{- toYaml .Values.ingestionGateway.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem }}
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.ingestionGateway.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.ingestionGateway.service.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingestion-gateway
+  namespace: {{ .Values.namespaces.ingestion }}
+spec:
+  selector:
+    app: ingestion-gateway
+  ports:
+    - port: {{ .Values.ingestionGateway.service.port }}
+      targetPort: {{ .Values.ingestionGateway.service.port }}

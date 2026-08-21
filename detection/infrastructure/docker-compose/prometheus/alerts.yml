@@ -1,0 +1,134 @@
+groups:
+  - name: black-onyx-recording
+    rules:
+      - record: anomaly_kafka_topic_high_watermark
+        expr: >-
+          max by (topic, partition) (
+            label_replace(
+              label_replace(
+                redpanda_kafka_max_offset{redpanda_namespace="kafka"},
+                "topic", "$1", "redpanda_topic", "(.*)"
+              ),
+              "partition", "$1", "redpanda_partition", "(.*)"
+            )
+          )
+      - record: anomaly_kafka_consumer_lag_records
+        expr: >-
+          clamp_min(
+            anomaly_kafka_topic_high_watermark
+            - on (topic, partition) group_right (group)
+              max by (group, topic, partition) (
+                redpanda_kafka_consumer_group_committed_offset
+              ),
+            0
+          )
+
+  - name: black-onyx-availability
+    rules:
+      - alert: PlatformServiceDown
+        expr: probe_success{job="platform-health"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Platform health probe failed for {{ $labels.instance }}"
+          description: "The required HTTP service has failed its live probe for two minutes."
+
+      - alert: PostgreSQLDown
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL exporter cannot query the platform database"
+
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis exporter cannot query the correlation store"
+
+      - alert: RedpandaUnavailablePartitions
+        expr: redpanda_cluster_unavailable_partitions > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redpanda has unavailable partitions"
+
+  - name: black-onyx-pipeline
+    rules:
+      - alert: KafkaConsumerLagHigh
+        expr: max by (group, topic) (anomaly_kafka_consumer_lag_records) > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Kafka consumer lag high on {{ $labels.topic }} ({{ $labels.group }})"
+          description: "The consumer group is more than 1000 records behind for five minutes."
+
+      - alert: DlqGrowth
+        expr: >-
+          sum by (topic) (
+            clamp_min(
+              delta(anomaly_kafka_topic_high_watermark{topic=~".*\\.dlq"}[5m]),
+              0
+            )
+          ) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "DLQ topic {{ $labels.topic }} is growing"
+
+      - alert: IngestionRejectRatioHigh
+        expr: >-
+          rate(ingestion_events_rejected_total[5m])
+          /
+          clamp_min(
+            rate(ingestion_events_accepted_total[5m])
+            + rate(ingestion_events_rejected_total[5m]),
+            0.001
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "More than 1 percent of ingestion events are being rejected"
+
+      - alert: ProcessorFailures
+        expr: >-
+          sum(
+            rate(
+              {__name__=~"(flow|ids)_processor_events_total",status="error"}[5m]
+            )
+          ) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Processor errors are being recorded"
+
+      - alert: ResponseExecutionFailed
+        expr: rate(response_execution_total{status="failed"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "A response playbook execution failed"
+
+      - alert: DataQualityDegraded
+        expr: >-
+          sum(rate({__name__=~"(flow|ids)_processor_events_total",status="error"}[10m]))
+          /
+          clamp_min(
+            sum(rate({__name__=~"(flow|ids)_processor_events_total"}[10m])),
+            0.001
+          ) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Processor data-quality error ratio exceeds 5 percent"

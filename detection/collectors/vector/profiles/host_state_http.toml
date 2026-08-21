@@ -1,0 +1,26 @@
+# Vector profile: ship osquery/result JSON lines to Black Onyx ingestion-gateway.
+# Usage: vector --config collectors/vector/profiles/host_state_http.toml
+
+[sources.osquery_results]
+type = "file"
+include = ["/var/log/osquery/osqueryd.results.log"]
+read_from = "beginning"
+
+[transforms.to_envelope]
+type = "remap"
+inputs = ["osquery_results"]
+source = '''
+. = parse_json!(.message)
+.tenant_id = get_env_var!("AA_TENANT_ID")
+.asset_id = get_env_var!("AA_ASSET_ID")
+.event_type = "host_state.process_snapshot"
+'''
+
+[sinks.gateway]
+type = "http"
+inputs = ["to_envelope"]
+uri = "http://127.0.0.1:8080/api/v1/ingest/host-state"
+method = "post"
+encoding.codec = "json"
+request.headers.X-API-Key = "${AA_INGEST_KEY}"
+request.headers.X-Tenant-Id = "${AA_TENANT_ID}"

@@ -1,0 +1,16 @@
+{
+  "event_type": "pcap.excerpt",
+  "excerpt_id": "pcap-01HXEXAMPLE000000000000",
+  "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "uri": "s3://anomaly-pcap/tenant-acme/pcap-01HXEXAMPLE000000000000.pcap",
+  "reason": "suricata_sid:2100498",
+  "bytes": 65536,
+  "ttl_days": 14,
+  "sensor_id": "sensor-edge-01",
+  "asset_id": "host-web-01",
+  "community_id": "1:LQU9qZlK+B5F3Y8c6s0y9w==",
+  "zeek_uid": "C1234567890abcdef",
+  "related_finding_ids": [],
+  "related_alert_sids": [2100498],
+  "captured_at": "2026-07-27T14:00:05Z"
+}

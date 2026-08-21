@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/schemas/host_state_event.json",
+  "title": "HostStateEvent",
+  "description": "Host-state modality payload (process, socket, autorun, session).",
+  "type": "object",
+  "required": ["event_type", "tenant_id", "asset_id", "occurred_at"],
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "host_state.process_snapshot",
+        "host_state.process_event",
+        "host_state.socket_snapshot",
+        "host_state.autorun_snapshot",
+        "host_state.user_session"
+      ]
+    },
+    "tenant_id": { "type": "string", "minLength": 1 },
+    "asset_id": { "type": "string", "minLength": 1 },
+    "service_id": { "type": ["string", "null"] },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "hostname": { "type": ["string", "null"] },
+    "os_family": {
+      "type": ["string", "null"],
+      "enum": ["linux", "windows", "darwin", "unknown", null]
+    },
+    "process": {
+      "type": "object",
+      "properties": {
+        "pid": { "type": "integer" },
+        "ppid": { "type": ["integer", "null"] },
+        "name": { "type": "string" },
+        "path": { "type": ["string", "null"] },
+        "cmdline": { "type": ["string", "null"] },
+        "user": { "type": ["string", "null"] },
+        "parent_name": { "type": ["string", "null"] },
+        "parent_path": { "type": ["string", "null"] },
+        "hashes": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "action": {
+          "type": ["string", "null"],
+          "enum": ["create", "terminate", "open", null]
+        }
+      },
+      "additionalProperties": true
+    },
+    "socket": {
+      "type": "object",
+      "properties": {
+        "pid": { "type": ["integer", "null"] },
+        "protocol": { "type": ["string", "null"] },
+        "local_address": { "type": ["string", "null"] },
+        "local_port": { "type": ["integer", "null"] },
+        "remote_address": { "type": ["string", "null"] },
+        "remote_port": { "type": ["integer", "null"] },
+        "state": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "autorun": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "path": { "type": ["string", "null"] },
+        "source": { "type": ["string", "null"] },
+        "enabled": { "type": ["boolean", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "session": {
+      "type": "object",
+      "properties": {
+        "user": { "type": "string" },
+        "logon_type": { "type": ["string", "null"] },
+        "source_ip": { "type": ["string", "null"] },
+        "action": {
+          "type": ["string", "null"],
+          "enum": ["logon", "logoff", "failed_logon", null]
+        }
+      },
+      "additionalProperties": true
+    },
+    "raw": { "type": "object" }
+  },
+  "additionalProperties": true
+}

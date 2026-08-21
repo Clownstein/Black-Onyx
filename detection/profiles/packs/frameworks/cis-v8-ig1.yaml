@@ -1,0 +1,124 @@
+pack_id: cis-v8-ig1
+kind: framework
+version: '8.1'
+title: CIS Controls v8.1 IG1
+extends_surfaces:
+- network
+- host
+- webapp
+- identity
+checks:
+- check_id: cis.v8.1.asset-inventory
+  title: Enterprise assets inventoried
+  surfaces:
+  - network
+  - host
+  - cloud
+  automation: hybrid
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - asset_registry_gap
+    - unauthorized_device
+- check_id: cis.v8.2.software-inventory
+  title: Authorized software inventory
+  surfaces:
+  - host
+  automation: hybrid
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - rare_binary_path
+- check_id: cis.v8.5.account-mfa
+  title: MFA for admin and remote access
+  surfaces:
+  - identity
+  automation: auto
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+  mitre_techniques:
+  - T1110
+- check_id: cis.v8.7.vuln-mgmt
+  title: Continuous vulnerability management
+  surfaces:
+  - host
+  - webapp
+  - cloud
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - vuln_ingest
+- check_id: cis.v8.8.audit-log-management
+  title: Audit log management
+  surfaces:
+  - host
+  - network
+  - identity
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  mitre_techniques:
+  - T1070
+  bindings:
+    detectors:
+    - log_source_silent
+- check_id: cis.v8.10.malware
+  title: Malware defenses on assets
+  surfaces:
+  - host
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - rare_binary_path
+- check_id: cis.v8.12.network-infra
+  title: Network infrastructure managed
+  surfaces:
+  - network
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - port_scan_heuristic
+- check_id: cis.v8.13.network-monitor
+  title: Network monitoring and defense
+  surfaces:
+  - network
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  mitre_techniques:
+  - T1046
+  - T1071
+  bindings:
+    detectors:
+    - port_scan_heuristic
+    - beaconing_heuristic
+    - new_external_peer
+- check_id: cis.v8.16.appsec
+  title: Application software security
+  surfaces:
+  - code
+  - webapp
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    scanners:
+    - cis-appsec
+    - owasp-asvs

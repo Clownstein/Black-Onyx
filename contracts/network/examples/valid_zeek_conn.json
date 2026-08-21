@@ -1,0 +1,18 @@
+{
+  "event_type": "zeek.conn",
+  "uid": "C1234567890abcdef",
+  "community_id": "1:LQU9qZlK+B5F3Y8c6s0y9w==",
+  "ts": 1720000000.12,
+  "id_orig_h_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "id_orig_p": 54321,
+  "id_resp_h_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "id_resp_p": 443,
+  "proto": "tcp",
+  "service": "ssl",
+  "duration": 1.25,
+  "orig_bytes": 1200,
+  "resp_bytes": 4800,
+  "conn_state": "SF",
+  "sensor_id": "sensor-edge-01",
+  "asset_id": "host-web-01"
+}

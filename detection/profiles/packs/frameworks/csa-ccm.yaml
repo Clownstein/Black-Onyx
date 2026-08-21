@@ -1,0 +1,81 @@
+pack_id: csa-ccm
+kind: framework
+version: '4.0'
+title: CSA Cloud Controls Matrix
+extends_surfaces:
+- cloud
+- identity
+- network
+- code
+checks:
+- check_id: ccm.iam.sso-mfa
+  title: Cloud SSO MFA and least privilege IAM
+  surfaces:
+  - identity
+  - cloud
+  automation: auto
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+- check_id: ccm.ivs.sg-deny
+  title: Security groups deny by default
+  surfaces:
+  - network
+  - cloud
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+- check_id: ccm.ivs.no-public-admin
+  title: No SSH/RDP open to 0.0.0.0/0
+  surfaces:
+  - network
+  - cloud
+  automation: auto
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - new_external_peer
+- check_id: ccm.ivs.flow-logs
+  title: VPC/cloud flow logs enabled
+  surfaces:
+  - network
+  - cloud
+  automation: hybrid
+  severity_default: high
+  evidence_types:
+  - detector_hit
+- check_id: ccm.ekm.encryption
+  title: Encryption defaults on storage
+  surfaces:
+  - cloud
+  automation: hybrid
+  severity_default: high
+  evidence_types:
+  - detector_hit
+- check_id: ccm.aaa.audit-logs
+  title: Cloud audit logs immutable sink
+  surfaces:
+  - cloud
+  - identity
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - log_source_silent
+- check_id: ccm.ais.images-scanned
+  title: Container images scanned
+  surfaces:
+  - code
+  - cloud
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    scanners:
+    - cis-appsec

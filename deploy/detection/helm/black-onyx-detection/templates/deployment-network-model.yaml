@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: network-model
+  namespace: {{ .Values.namespaces.models }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: network-model
+spec:
+  replicas: {{ .Values.networkModel.replicaCount }}
+  selector:
+    matchLabels:
+      app: network-model
+  template:
+    metadata:
+      labels:
+        app: network-model
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: network-model
+          image: {{ .Values.networkModel.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.networkModel.service.port }}
+          {{- if .Values.networkModel.artifactClaimName }}
+          volumeMounts:
+            - name: model-artifacts
+              mountPath: /app/artifacts
+              readOnly: true
+          {{- end }}
+          resources:
+            {{- toYaml .Values.networkModel.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.networkModel.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.networkModel.service.port }}
+      {{- if .Values.networkModel.artifactClaimName }}
+      volumes:
+        - name: model-artifacts
+          persistentVolumeClaim:
+            claimName: {{ .Values.networkModel.artifactClaimName | quote }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: network-model
+  namespace: {{ .Values.namespaces.models }}
+spec:
+  selector:
+    app: network-model
+  ports:
+    - port: {{ .Values.networkModel.service.port }}
+      targetPort: {{ .Values.networkModel.service.port }}

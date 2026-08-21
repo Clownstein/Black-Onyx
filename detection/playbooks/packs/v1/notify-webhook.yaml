@@ -1,0 +1,27 @@
+id: notify-webhook
+version: "1.0.0"
+name: Notify external webhook
+description: >
+  POST a signed incident summary to an operator-configured webhook (Shuffle, n8n,
+  Slack incoming, etc.). Approval optional for low-severity; recommended for high.
+mitre: []
+approval:
+  required: false
+  roles: [viewer, analyst, admin]
+dry_run:
+  default: true
+inputs:
+  - name: webhook_url
+    type: url
+    required: true
+  - name: include_evidence
+    type: boolean
+    default: false
+steps:
+  - id: build_payload
+    action: format_incident_webhook
+  - id: deliver
+    action: http.post
+    dry_run_skips_live: true
+audit:
+  retain_days: 90

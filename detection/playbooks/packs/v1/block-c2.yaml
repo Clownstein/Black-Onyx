@@ -1,0 +1,29 @@
+id: block-c2
+version: "1.0.0"
+name: Block C2 IP/domain
+description: >
+  Block command-and-control IP and/or domain via firewall and DNS RPZ.
+  Requires human approval; defaults to dry-run.
+mitre:
+  - T1071
+approval:
+  required: true
+  roles: [analyst, admin]
+dry_run:
+  default: true
+inputs:
+  - name: ip
+    type: ipv4
+    required: false
+  - name: domain
+    type: string
+    required: false
+steps:
+  - id: request_approval
+    action: create_response_request
+  - id: block
+    action: block_c2
+    when: approved
+    dry_run_skips_live: true
+audit:
+  retain_days: 365

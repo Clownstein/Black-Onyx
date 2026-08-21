@@ -1,0 +1,149 @@
+# Optional observability overlay for Black Onyx detection (Prometheus/Grafana/Loki/Tempo).
+# Joins the root Compose project network (default) — do not set a separate project name.
+#
+# From repo root:
+#   docker compose -f docker-compose.yml -f docker-compose.platform.yml \
+#     -f docker-compose.detection-apps.yml \
+#     -f detection/infrastructure/docker-compose/docker-compose.observability.yml up -d
+#
+# With OTEL collector → Tempo:
+#   ... -f detection/infrastructure/docker-compose/docker-compose.otel.yml \
+#       -f detection/infrastructure/docker-compose/docker-compose.observability.yml up -d
+#
+# UIs (loopback): Grafana :3000, Prometheus :9090, Loki :3100, Tempo :3200, Alertmanager :9093.
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    container_name: blackonyx-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=24h
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    networks: [default]
+    depends_on:
+      - alertmanager
+      - blackbox
+      - postgres-exporter
+      - redis-exporter
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    container_name: blackonyx-alertmanager
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    ports:
+      - "127.0.0.1:9093:9093"
+    networks: [default]
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:3.4.2
+    container_name: blackonyx-loki
+    command: ["-config.file=/etc/loki/loki-config.yml"]
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/loki
+    ports:
+      - "127.0.0.1:3100:3100"
+    networks: [default]
+    restart: unless-stopped
+
+  tempo:
+    image: grafana/tempo:2.7.1
+    container_name: blackonyx-tempo
+    command: ["-config.file=/etc/tempo/tempo.yml"]
+    volumes:
+      - ./tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+      - tempo_data:/var/tempo
+    ports:
+      - "127.0.0.1:3200:3200"
+    networks: [default]
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.6.0
+    container_name: blackonyx-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_INSTALL_PLUGINS: grafana-opensearch-datasource
+      GF_FEATURE_TOGGLES_ENABLE: traceqlEditor
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks: [default]
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    restart: unless-stopped
+
+  alloy:
+    image: grafana/alloy:v1.7.1
+    container_name: blackonyx-alloy
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --storage.path=/var/lib/alloy/data
+      - --server.http.listen-addr=0.0.0.0:12345
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy_data:/var/lib/alloy/data
+    depends_on:
+      - loki
+    networks: [default]
+    restart: unless-stopped
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: blackonyx-postgres-exporter
+    environment:
+      DATA_SOURCE_URI: postgres:5432/anomaly?sslmode=disable
+      DATA_SOURCE_USER: anomaly
+      DATA_SOURCE_PASS: ${POSTGRES_PASSWORD:-anomaly}
+    networks: [default]
+    restart: unless-stopped
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.62.0
+    container_name: blackonyx-redis-exporter
+    environment:
+      REDIS_ADDR: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-anomaly-redis-lab}
+    networks: [default]
+    restart: unless-stopped
+
+  blackbox:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: blackonyx-blackbox
+    command: ["--config.file=/etc/blackbox/blackbox.yml"]
+    volumes:
+      - ./prometheus/blackbox.yml:/etc/blackbox/blackbox.yml:ro
+    networks: [default]
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+  alertmanager_data:
+  loki_data:
+  tempo_data:
+  grafana_data:
+  alloy_data:

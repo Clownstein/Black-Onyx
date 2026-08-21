@@ -1,0 +1,28 @@
+# Air-gapped overlay — no outbound threat-intel polling; OIDC still required.
+# Usage:
+#   helm upgrade --install black-onyx-detection . -f values.yaml -f values-prod.yaml -f values-airgap.yaml
+#
+# Notes:
+# - Threat feeds (CISA KEV URL, TAXII, MISP sync) must be disabled; use manual STIX upload
+#   or signed air-gap TI bundles instead.
+# - When threat-intel-service is charted, set THREAT_INTEL_AIRGAP_MODE=true from featureFlags.airgapMode.
+# - Image pulls and model downloads must use a private registry / pre-loaded images.
+
+security:
+  oidcDisabled: false
+  allowDemoKeys: false
+  requireServiceKeys: true
+
+featureFlags:
+  externalTiPolling: false
+  airgapMode: true
+  opensearchIndexing: true
+
+opensearch:
+  url: http://opensearch:9200
+
+threatIntel:
+  airgapMode: true
+  # Leave TAXII/MISP URLs unset in air-gap; do not point at public CISA KEV.
+  taxiiUrl: ""
+  mispUrl: ""

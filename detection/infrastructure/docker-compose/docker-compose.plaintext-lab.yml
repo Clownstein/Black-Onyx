@@ -1,0 +1,4 @@
+# Explicit plaintext lab note — omit docker-compose.mtls.yml for rapid iteration.
+# Do not use on networked hosts. Prefer edge-localhost + ALLOW_DEMO_KEYS=true only.
+
+services: {}

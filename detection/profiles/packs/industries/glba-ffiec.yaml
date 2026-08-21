@@ -1,0 +1,55 @@
+pack_id: glba-ffiec
+kind: industry
+version: '2026'
+title: Financial Services GLBA / FFIEC
+recommended_backbone:
+- soc2-security
+- nist-csf-2
+extends_surfaces:
+- identity
+- network
+- host
+- webapp
+- cloud
+checks:
+- check_id: glba.wisp
+  title: Written information security program
+  surfaces:
+  - identity
+  automation: manual
+  severity_default: high
+  evidence_types:
+  - attestation
+- check_id: glba.mfa
+  title: MFA for employees and high-risk customers
+  surfaces:
+  - identity
+  automation: auto
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+- check_id: glba.vendor
+  title: Vendor due diligence for critical ICT
+  surfaces:
+  - cloud
+  automation: manual
+  severity_default: high
+  evidence_types:
+  - attestation
+- check_id: glba.ir-timelines
+  title: Incident notification timelines met
+  surfaces:
+  - identity
+  automation: manual
+  severity_default: high
+  evidence_types:
+  - attestation
+- check_id: ffiec.privileged-core
+  title: Privileged access to core systems controlled
+  surfaces:
+  - identity
+  - host
+  automation: auto
+  severity_default: critical
+  evidence_types:
+  - detector_hit

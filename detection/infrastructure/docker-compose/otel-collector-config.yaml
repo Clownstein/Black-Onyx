@@ -1,0 +1,47 @@
+# Optional OpenTelemetry Collector stub for local tracing.
+# Not started by default compose (keeps the laptop stack light).
+#
+# Enable from repo root:
+#   docker compose -f docker-compose.yml -f docker-compose.platform.yml \
+#     -f detection/infrastructure/docker-compose/docker-compose.otel.yml up -d
+#
+# With Tempo (observability overlay):
+#   docker compose -f docker-compose.yml -f docker-compose.platform.yml \
+#     -f detection/infrastructure/docker-compose/docker-compose.otel.yml \
+#     -f detection/infrastructure/docker-compose/docker-compose.observability.yml up -d
+#
+# Point services at the collector:
+#   OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+#
+# The debug exporter keeps OTEL-only stacks useful. The Tempo exporter queues
+# and retries until the observability overlay is present.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch: {}
+
+exporters:
+  debug:
+    verbosity: basic
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+    sending_queue:
+      enabled: true
+    retry_on_failure:
+      enabled: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug, otlp/tempo]

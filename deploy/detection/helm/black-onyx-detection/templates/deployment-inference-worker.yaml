@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inference-worker
+  namespace: {{ .Values.namespaces.processing }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: inference-worker
+spec:
+  replicas: {{ .Values.inferenceWorker.replicaCount }}
+  selector:
+    matchLabels:
+      app: inference-worker
+  template:
+    metadata:
+      labels:
+        app: inference-worker
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: inference-worker
+          image: {{ .Values.inferenceWorker.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.inferenceWorker.service.port }}
+          env:
+            - name: INFER_KAFKA_BROKERS
+              value: "redpanda:9092"
+            - name: INFER_MODEL_GATEWAY_URL
+              value: "http://model-gateway:8091"
+            - name: INFER_INCIDENT_API_URL
+              value: "http://incident-api:8083"
+            - name: INFER_PORT
+              value: {{ .Values.inferenceWorker.service.port | quote }}
+          resources:
+            {{- toYaml .Values.inferenceWorker.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.inferenceWorker.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.inferenceWorker.service.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inference-worker
+  namespace: {{ .Values.namespaces.processing }}
+spec:
+  selector:
+    app: inference-worker
+  ports:
+    - port: {{ .Values.inferenceWorker.service.port }}
+      targetPort: {{ .Values.inferenceWorker.service.port }}
+{{- if .Values.podDisruptionBudget.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: inference-worker
+  namespace: {{ .Values.namespaces.processing }}
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      app: inference-worker
+{{- end }}
+{{- if .Values.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: inference-worker
+  namespace: {{ .Values.namespaces.processing }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: inference-worker
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}

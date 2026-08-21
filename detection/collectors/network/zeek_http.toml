@@ -1,0 +1,99 @@
+# Vector profile: ship Zeek JSON logs to Black Onyx ingestion-gateway.
+# Usage: vector --config collectors/network/zeek_http.toml
+#
+# Expects Zeek JSON logging (@load policy/tuning/json-logs) writing under
+# /opt/zeek/logs/current/{conn,dns,ssl}.log
+#
+# NOTE: ingestion-gateway requires Crockford ULID event_id. Install a ULID
+# generator transform or preprocess; static lab IDs below are placeholders.
+
+[sources.zeek_conn]
+type = "file"
+include = ["/opt/zeek/logs/current/conn.log"]
+read_from = "beginning"
+ignore_older_secs = 86400
+
+[sources.zeek_dns]
+type = "file"
+include = ["/opt/zeek/logs/current/dns.log"]
+read_from = "beginning"
+ignore_older_secs = 86400
+
+[sources.zeek_ssl]
+type = "file"
+include = ["/opt/zeek/logs/current/ssl.log"]
+read_from = "beginning"
+ignore_older_secs = 86400
+
+[transforms.zeek_conn_envelope]
+type = "remap"
+inputs = ["zeek_conn"]
+source = '''
+raw = parse_json!(.message)
+. = {}
+.schema_version = "1.0"
+# Replace with Crockford ULID (gateway rejects UUID).
+.event_id = get_env_var("AA_EVENT_ID_OVERRIDE") ?? "01HXZEEK000000000000000000"
+.event_type = "zeek.conn"
+.tenant_id = get_env_var!("AA_TENANT_ID")
+.occurred_at = format_timestamp!(now(), format: "%+")
+.ingested_at = .occurred_at
+.source.collector_id = get_env_var!("AA_COLLECTOR_ID")
+.source.source_type = "zeek"
+.asset.asset_id = get_env_var!("AA_ASSET_ID")
+.payload = raw
+.payload.event_type = "zeek.conn"
+.payload.sensor_id = get_env_var!("AA_SENSOR_ID")
+.payload.asset_id = get_env_var!("AA_ASSET_ID")
+'''
+
+[transforms.zeek_dns_envelope]
+type = "remap"
+inputs = ["zeek_dns"]
+source = '''
+raw = parse_json!(.message)
+. = {}
+.schema_version = "1.0"
+.event_id = get_env_var("AA_EVENT_ID_OVERRIDE") ?? "01HXZEEK000000000000000001"
+.event_type = "zeek.dns"
+.tenant_id = get_env_var!("AA_TENANT_ID")
+.occurred_at = format_timestamp!(now(), format: "%+")
+.ingested_at = .occurred_at
+.source.collector_id = get_env_var!("AA_COLLECTOR_ID")
+.source.source_type = "zeek"
+.asset.asset_id = get_env_var!("AA_ASSET_ID")
+.payload = raw
+.payload.event_type = "zeek.dns"
+.payload.sensor_id = get_env_var!("AA_SENSOR_ID")
+.payload.asset_id = get_env_var!("AA_ASSET_ID")
+'''
+
+[transforms.zeek_ssl_envelope]
+type = "remap"
+inputs = ["zeek_ssl"]
+source = '''
+raw = parse_json!(.message)
+. = {}
+.schema_version = "1.0"
+.event_id = get_env_var("AA_EVENT_ID_OVERRIDE") ?? "01HXZEEK000000000000000002"
+.event_type = "zeek.ssl"
+.tenant_id = get_env_var!("AA_TENANT_ID")
+.occurred_at = format_timestamp!(now(), format: "%+")
+.ingested_at = .occurred_at
+.source.collector_id = get_env_var!("AA_COLLECTOR_ID")
+.source.source_type = "zeek"
+.asset.asset_id = get_env_var!("AA_ASSET_ID")
+.payload = raw
+.payload.event_type = "zeek.ssl"
+.payload.sensor_id = get_env_var!("AA_SENSOR_ID")
+.payload.asset_id = get_env_var!("AA_ASSET_ID")
+'''
+
+[sinks.gateway_zeek]
+type = "http"
+inputs = ["zeek_conn_envelope", "zeek_dns_envelope", "zeek_ssl_envelope"]
+uri = "${AA_GATEWAY_URL:-http://127.0.0.1:8080}/api/v1/ingest/zeek"
+method = "post"
+encoding.codec = "json"
+request.headers.X-API-Key = "${AA_INGEST_KEY}"
+request.headers.X-Tenant-Id = "${AA_TENANT_ID}"

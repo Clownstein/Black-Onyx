@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/qdrant/attack_tech_v1.payload.json",
+  "title": "AttackTechV1Payload",
+  "type": "object",
+  "required": [
+    "technique_id",
+    "name",
+    "domain",
+    "text",
+    "embed_model",
+    "embed_version"
+  ],
+  "properties": {
+    "technique_id": {
+      "type": "string",
+      "pattern": "^T[0-9]{4}(\\.[0-9]{3})?$",
+      "description": "e.g. T1110 or T1071.001"
+    },
+    "name": { "type": "string" },
+    "tactics": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "ATT&CK tactic names or short IDs"
+    },
+    "domain": {
+      "type": "string",
+      "enum": ["enterprise", "ics", "mobile"]
+    },
+    "platforms": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "is_subtechnique": { "type": "boolean" },
+    "parent_technique_id": { "type": ["string", "null"] },
+    "text": {
+      "type": "string",
+      "description": "name + description (+ detection notes) used for embedding"
+    },
+    "url": { "type": ["string", "null"], "format": "uri" },
+    "attack_version": { "type": "string" },
+    "embed_model": { "type": "string" },
+    "embed_version": { "type": "string" },
+    "schema_version": { "type": "string" }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,8 @@
+{
+  "technique_id": "T1059",
+  "name": "Command and Scripting Interpreter",
+  "tactic": "Execution",
+  "text": "Adversaries may abuse command interpreters",
+  "embed_model": "cisco-ai/SecureBERT2.0-biencoder",
+  "embed_version": "securebert2.0-biencoder"
+}

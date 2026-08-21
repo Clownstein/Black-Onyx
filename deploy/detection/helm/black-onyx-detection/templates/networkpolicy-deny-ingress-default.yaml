@@ -1,0 +1,73 @@
+{{- if .Values.networkPolicy.denyIngressDefault }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-ingress-default
+  namespace: {{ .Values.namespaces.application }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-ingress-default
+  namespace: {{ .Values.namespaces.ingestion }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-ingress-default
+  namespace: {{ .Values.namespaces.processing }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-ingress-default
+  namespace: {{ .Values.namespaces.models }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-ingress-default
+  namespace: {{ .Values.namespaces.observability }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-ingress-default
+  namespace: {{ .Values.namespaces.training }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+{{- end }}

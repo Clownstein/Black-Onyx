@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/qdrant/runbooks_v1.payload.json",
+  "title": "RunbooksV1Payload",
+  "type": "object",
+  "required": [
+    "doc_id",
+    "chunk_id",
+    "title",
+    "text",
+    "embed_model",
+    "embed_version"
+  ],
+  "properties": {
+    "tenant_id": {
+      "type": ["string", "null"],
+      "description": "null/__global__ for platform docs; set for tenant-specific runbooks"
+    },
+    "doc_id": { "type": "string" },
+    "chunk_id": { "type": "string" },
+    "chunk_index": { "type": "integer", "minimum": 0 },
+    "title": { "type": "string" },
+    "section": { "type": ["string", "null"] },
+    "source_path": {
+      "type": ["string", "null"],
+      "description": "Repo path e.g. docs/operations/runbooks/broker-outage.md"
+    },
+    "doc_type": {
+      "type": "string",
+      "enum": ["runbook", "detector_note", "security_standard", "playbook", "postmortem"]
+    },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "mitre_techniques": { "type": "array", "items": { "type": "string" } },
+    "modalities": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "text": { "type": "string" },
+    "updated_at": { "type": ["string", "null"], "format": "date-time" },
+    "updated_at_ts": { "type": ["integer", "null"] },
+    "embed_model": { "type": "string" },
+    "embed_version": { "type": "string" },
+    "schema_version": { "type": "string" }
+  },
+  "additionalProperties": false
+}

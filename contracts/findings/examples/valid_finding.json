@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "finding_id": "finding-log-01J3T5C0RB6GCYKAT1BFRX7A3Q",
+  "tenant_id": "tenant-acme",
+  "finding_type": "log_anomaly",
+  "asset_id": "host-payments-03",
+  "service_id": "payments-api",
+  "model_name": "log-transformer",
+  "model_version": "1.3.0",
+  "feature_version": "3.0",
+  "raw_score": 4.82,
+  "calibrated_score": 0.94,
+  "severity_hint": "high",
+  "window": {
+    "start": "2026-07-26T20:39:00Z",
+    "end": "2026-07-26T20:41:02Z"
+  },
+  "contributors": [
+    {
+      "type": "unexpected_template",
+      "template_id": "tpl-privilege-change",
+      "position": 17,
+      "contribution": 0.41
+    }
+  ],
+  "evidence_refs": [],
+  "context": {},
+  "category": [],
+  "mitre_tactics": ["TA0004"],
+  "mitre_techniques": ["T1078"],
+  "mitre_confidence": 0.7,
+  "threat_intel": {
+    "matched_indicators": [],
+    "campaigns": [],
+    "tlp": null
+  },
+  "compliance": {
+    "profile_pack_ids": ["cis-v8-ig1"],
+    "check_ids": ["cis.v8.8.audit-log-management"],
+    "surfaces": ["host", "identity"],
+    "automation": "auto"
+  }
+}

@@ -1,0 +1,422 @@
+global:
+  imageRegistry: ""
+  imagePullPolicy: IfNotPresent
+
+namespaces:
+  ingestion: black-onyx-ingestion
+  processing: black-onyx-processing
+  models: black-onyx-models
+  application: black-onyx-application
+  observability: black-onyx-observability
+  training: black-onyx-training
+
+ingestionGateway:
+  replicaCount: 2
+  image: black-onyx/ingestion-gateway:0.1.0
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  service:
+    port: 8080
+
+logProcessor:
+  replicaCount: 2
+  image: black-onyx/log-processor:0.1.0
+  resources:
+    requests:
+      cpu: "1"
+      memory: 1Gi
+  service:
+    port: 8082
+
+flowProcessor:
+  replicaCount: 2
+  image: black-onyx/flow-processor:0.1.0
+  resources:
+    requests:
+      cpu: "1"
+      memory: 1Gi
+  service:
+    port: 8094
+
+metricsProcessor:
+  replicaCount: 2
+  image: black-onyx/metrics-processor:0.1.0
+  resources:
+    requests:
+      cpu: "1"
+      memory: 1Gi
+  service:
+    port: 8095
+
+codeProcessor:
+  replicaCount: 2
+  image: black-onyx/code-processor:0.1.0
+  semgrepEnabled: true
+  codeqlEnabled: false
+  codeqlRamMb: 1024
+  resources:
+    requests:
+      cpu: "1"
+      memory: 1Gi
+    limits:
+      memory: 2Gi
+  service:
+    port: 8093
+
+firewallProcessor:
+  replicaCount: 1
+  image: black-onyx/firewall-processor:0.1.0
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  service:
+    port: 8099
+
+hostStateProcessor:
+  replicaCount: 1
+  image: black-onyx/host-state-processor:0.1.0
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  service:
+    port: 8097
+
+# Feed/air-gap behavior for threat-intel-service. Required: the deployment
+# template dereferences .Values.threatIntel.{airgapMode,taxiiUrl,mispUrl}, so
+# omitting this block makes `helm template` fail on a nil pointer.
+# values-airgap.yaml overrides airgapMode to true and blanks the feed URLs.
+threatIntel:
+  airgapMode: false
+  taxiiUrl: ""
+  mispUrl: ""
+
+threatIntelService:
+  replicaCount: 1
+  image: black-onyx/threat-intel-service:0.1.0
+  databaseUrl: postgresql+psycopg://anomaly:anomaly@postgres:5432/threat_intel
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  service:
+    port: 8098
+
+integrationHub:
+  replicaCount: 1
+  image: black-onyx/integration-hub:0.1.0
+  databaseUrl: postgresql+psycopg://anomaly:anomaly@postgres:5432/integration_hub
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  service:
+    port: 8105
+
+assetRegistry:
+  replicaCount: 2
+  image: black-onyx/asset-registry:0.1.0
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  service:
+    port: 8081
+
+notificationService:
+  replicaCount: 2
+  image: black-onyx/notification-service:0.1.0
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  service:
+    port: 8086
+
+incidentApi:
+  replicaCount: 2
+  image: black-onyx/incident-api:0.1.0
+  deploymentConsumerEnabled: "true"
+  kafkaBrokers: redpanda:9092
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  service:
+    port: 8083
+
+correlationEngine:
+  # Shared Redis buckets allow HA; Compose sets CORRELATION_REDIS_URL.
+  replicaCount: 2
+  image: black-onyx/correlation-engine:0.1.0
+  # Production: inject password via Secret into the URL (redis://:PASSWORD@redis:6379/0).
+  redisUrl: redis://redis:6379/0
+  findingTopics: findings.logs,findings.code,findings.network,findings.metrics,findings.host-state,findings.firewall,findings.malware
+  threatIntelUrl: http://threat-intel-service:8098
+  vectorSearchEnabled: "false"
+  qdrantUrl: ""
+  embeddingServiceUrl: http://embedding-worker:8115
+  resources:
+    requests:
+      cpu: "1"
+      memory: 1Gi
+  service:
+    port: 8084
+
+idsProcessor:
+  replicaCount: 1
+  image: black-onyx/ids-processor:0.1.0
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  service:
+    port: 8100
+
+codeEnrichmentWorker:
+  replicaCount: 1
+  image: black-onyx/code-enrichment-worker:0.1.0
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+  service:
+    port: 8110
+
+embeddingWorker:
+  replicaCount: 1
+  image: black-onyx/embedding-worker:0.1.0
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+  service:
+    port: 8115
+
+profileEvaluator:
+  replicaCount: 1
+  image: black-onyx/profile-evaluator:0.1.0
+  enableLoop: "true"
+  intervalSeconds: "300"
+  tenantId: tenant-acme
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  service:
+    port: 8116
+
+responseOrchestrator:
+  replicaCount: 1
+  image: black-onyx/response-orchestrator:0.1.0
+  dryRunDefault: "true"
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  service:
+    port: 8111
+
+malwareTriage:
+  replicaCount: 1
+  image: black-onyx/malware-triage:0.1.0
+  allowHeuristicFallback: "false"
+  capaBin: /usr/local/bin/capa
+  flossBin: /usr/local/bin/floss
+  clamscanBin: /usr/bin/clamscan
+  emberOnnxPath: /packages/malware-static/artifacts/ember_pe.onnx
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+  service:
+    port: 8112
+
+malwareOrchestrator:
+  replicaCount: 1
+  image: black-onyx/malware-orchestrator:0.1.0
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+  service:
+    port: 8113
+
+malwareProcessor:
+  replicaCount: 1
+  image: black-onyx/malware-processor:0.1.0
+  publishFindings: "true"
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  service:
+    port: 8114
+
+inferenceWorker:
+  replicaCount: 2
+  image: black-onyx/inference-worker:0.1.0
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  service:
+    port: 8088
+
+modelGateway:
+  replicaCount: 2
+  image: black-onyx/model-gateway:0.1.0
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  canaryPercent: 10
+  service:
+    port: 8091
+
+logModel:
+  replicaCount: 2
+  image: black-onyx/log-model:0.1.0
+  artifactClaimName: ""
+  resources:
+    requests:
+      cpu: "1"
+      memory: 1Gi
+  service:
+    port: 8090
+
+networkModel:
+  replicaCount: 2
+  image: black-onyx/network-model:0.1.0
+  artifactClaimName: ""
+  resources:
+    requests:
+      cpu: "1"
+      memory: 1Gi
+  service:
+    port: 8101
+
+metricsModel:
+  replicaCount: 2
+  image: black-onyx/metrics-model:0.1.0
+  artifactClaimName: ""
+  resources:
+    requests:
+      cpu: "1"
+      memory: 1Gi
+  service:
+    port: 8102
+
+codeModel:
+  replicaCount: 2
+  image: black-onyx/code-model:0.1.0
+  artifactClaimName: ""
+  resources:
+    requests:
+      cpu: "1"
+      memory: 1Gi
+  service:
+    port: 8103
+
+hostStateModel:
+  replicaCount: 1
+  image: black-onyx/host-state-model:0.1.0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  service:
+    port: 8104
+
+trainingOrchestrator:
+  replicaCount: 1
+  image: black-onyx/training-orchestrator:0.1.0
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  service:
+    port: 8096
+
+# Product UI is Black Onyx web (root docker-compose `web` service), not a separate SPA.
+frontend:
+  enabled: false
+  replicaCount: 0
+  image: black-onyx/web:1.0.0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  service:
+    port: 8000
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+networkPolicy:
+  defaultDenyIngress: true
+  denyIngressDefault: true
+  allowRules: true
+
+ingress:
+  enabled: false
+  className: nginx
+  controllerNamespace: ingress-nginx
+  annotations: {}
+  hosts:
+    frontend: detection.local
+    incidentApi: api.detection.local
+    ingestionGateway: ingest.detection.local
+  tls: []
+
+security:
+  oidcDisabled: false
+  allowDemoKeys: false
+  requireServiceKeys: false
+
+featureFlags:
+  externalTiPolling: false
+  airgapMode: false
+  opensearchIndexing: false
+
+opensearch:
+  url: https://opensearch:9200
+
+oidc:
+  issuer: ""
+  audience: ""
+  jwksUrl: ""
+
+# NOTE: malwareOrchestrator / malwareProcessor / responseOrchestrator were
+# redefined here as duplicate top-level keys. YAML does not merge duplicates —
+# the later block replaced the earlier one wholesale, which dropped image,
+# replicaCount, resources and service from all three, and flipped mockCape /
+# allowMockPublish on by default (which is why values-prod.yaml had to set them
+# back to "false"). The canonical definitions above are the ones that survive.

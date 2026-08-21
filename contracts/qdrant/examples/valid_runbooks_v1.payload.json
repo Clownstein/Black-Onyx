@@ -1,0 +1,8 @@
+{
+  "tenant_id": "tenant-demo",
+  "path": "docs/operations/runbooks/isolate-host.md",
+  "title": "Isolate host",
+  "text": "Human-gated host isolation steps",
+  "embed_model": "cisco-ai/SecureBERT2.0-biencoder",
+  "embed_version": "securebert2.0-biencoder"
+}

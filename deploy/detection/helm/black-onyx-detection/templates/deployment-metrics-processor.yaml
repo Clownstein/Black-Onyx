@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metrics-processor
+  namespace: {{ .Values.namespaces.processing }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: metrics-processor
+spec:
+  replicas: {{ .Values.metricsProcessor.replicaCount }}
+  selector:
+    matchLabels:
+      app: metrics-processor
+  template:
+    metadata:
+      labels:
+        app: metrics-processor
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: metrics-processor
+          image: {{ .Values.metricsProcessor.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.metricsProcessor.service.port }}
+          resources:
+            {{- toYaml .Values.metricsProcessor.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem }}
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.metricsProcessor.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.metricsProcessor.service.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: metrics-processor
+  namespace: {{ .Values.namespaces.processing }}
+spec:
+  selector:
+    app: metrics-processor
+  ports:
+    - port: {{ .Values.metricsProcessor.service.port }}
+      targetPort: {{ .Values.metricsProcessor.service.port }}
+{{- if .Values.podDisruptionBudget.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: metrics-processor
+  namespace: {{ .Values.namespaces.processing }}
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      app: metrics-processor
+{{- end }}
+{{- if .Values.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: metrics-processor
+  namespace: {{ .Values.namespaces.processing }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: metrics-processor
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}

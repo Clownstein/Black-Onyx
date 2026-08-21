@@ -1,0 +1,221 @@
+# Detection-plane infra for Black Onyx (absorbed AutoAnalyzer).
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.platform.yml up -d
+#
+# Shares the default compose project network with web/qdrant/searxng
+# (same project name as `docker compose -f docker-compose.yml …`).
+# Does NOT start a second Qdrant — use the existing `qdrant` service.
+# Do not force a separate network `name:` — that isolates detection from TIP.
+
+services:
+  postgres:
+    image: postgres:16.9-alpine
+    container_name: blackonyx-postgres
+    environment:
+      POSTGRES_USER: anomaly
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-anomaly}
+      POSTGRES_DB: anomaly
+    volumes:
+      - aa_postgres_data:/var/lib/postgresql/data
+      - ./deploy/detection/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U anomaly -d anomaly"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "127.0.0.1:${BLACK_ONYX_POSTGRES_PORT:-5432}:5432"
+
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v24.3.9
+    container_name: blackonyx-redpanda
+    command:
+      - redpanda
+      - start
+      - --kafka-addr
+      - internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr
+      - internal://redpanda:9092,external://localhost:19092
+      - --pandaproxy-addr
+      - internal://0.0.0.0:8082,external://0.0.0.0:18082
+      - --advertise-pandaproxy-addr
+      - internal://redpanda:8082,external://localhost:18082
+      - --schema-registry-addr
+      - internal://0.0.0.0:8081,external://0.0.0.0:18081
+      - --rpc-addr
+      - redpanda:33145
+      - --advertise-rpc-addr
+      - redpanda:33145
+      - --mode
+      - dev-container
+      - --smp
+      - "1"
+      - --memory
+      - 512M
+      - --overprovisioned
+      - --set
+      - redpanda.log_retention_ms=3600000
+      - --set
+      - redpanda.log_segment_size=16777216
+    volumes:
+      - aa_redpanda_data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy'"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+    ports:
+      - "127.0.0.1:${BLACK_ONYX_KAFKA_PORT:-19092}:19092"
+
+  redpanda-init:
+    image: docker.redpanda.com/redpandadata/redpanda:v24.3.9
+    container_name: blackonyx-redpanda-init
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        topics="
+          logs.raw logs.raw.dlq
+          logs.features logs.features.dlq
+          findings.logs findings.logs.dlq
+          findings.code findings.code.dlq findings.network findings.network.dlq
+          findings.metrics findings.metrics.dlq
+          findings.host-state findings.host-state.dlq findings.firewall findings.firewall.dlq
+          findings.malware findings.malware.dlq
+          findings.embedding.dlq findings.correlation.dlq
+          network.raw network.features network.features.dlq network.raw.dlq
+          metrics.raw metrics.features metrics.features.dlq metrics.raw.dlq
+          code.raw code.raw.dlq code.features code.features.dlq code.findings code.findings.dlq
+          code.enrichment code.enrichment.dlq
+          host-state.raw host-state.raw.dlq host-state.features host-state.features.dlq
+          firewall.raw firewall.raw.dlq firewall.features firewall.features.dlq
+          dns.raw dns.raw.dlq
+          zeek.raw zeek.raw.dlq
+          suricata.raw suricata.raw.dlq
+          pcap.meta pcap.meta.dlq
+          malware.submit malware.submit.dlq
+          malware.reports malware.reports.dlq
+          deployments.raw deployments.raw.dlq deployment.events
+          ingest.dlq
+        "
+        for topic in $$topics; do
+          out=$$(rpk topic create "$$topic" --brokers redpanda:9092 2>&1) || {
+            case "$$out" in
+              *"already exists"*|*"TOPIC_ALREADY_EXISTS"*) ;;
+              *) echo "$$out" >&2; exit 1 ;;
+            esac
+          }
+        done
+        rpk topic list --brokers redpanda:9092
+    restart: "no"
+
+  opensearch:
+    image: opensearchproject/opensearch:2.19.1
+    container_name: blackonyx-opensearch
+    environment:
+      discovery.type: single-node
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OPENSEARCH_INITIAL_ADMIN_PASSWORD:-AnomalyOS#Admin1}
+      DISABLE_INSTALL_DEMO_CONFIG: "false"
+      cluster.routing.allocation.disk.threshold_enabled: "false"
+    volumes:
+      - aa_opensearch_data:/usr/share/opensearch/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "127.0.0.1:${BLACK_ONYX_OPENSEARCH_PORT:-9200}:9200"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -skf -u \"admin:$${OPENSEARCH_INITIAL_ADMIN_PASSWORD:-AnomalyOS#Admin1}\" \"https://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s\" >/dev/null",
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 40s
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    container_name: blackonyx-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - aa_minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "127.0.0.1:${BLACK_ONYX_MINIO_PORT:-9000}:9000"
+
+  redis:
+    image: redis:7.4.4-alpine
+    container_name: blackonyx-redis
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-anomaly-redis-lab}
+    volumes:
+      - aa_redis_data:/data
+    command:
+      - redis-server
+      - --save
+      - "60"
+      - "1"
+      - --maxmemory
+      - 128mb
+      - --maxmemory-policy
+      - allkeys-lru
+      - --requirepass
+      - ${REDIS_PASSWORD:-anomaly-redis-lab}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "redis-cli -a \"$${REDIS_PASSWORD:-anomaly-redis-lab}\" ping | grep -q PONG",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "127.0.0.1:${BLACK_ONYX_REDIS_PORT:-6379}:6379"
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.22.1
+    container_name: blackonyx-mlflow
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:///mlflow.db
+      --default-artifact-root /mlflow/artifacts
+    volumes:
+      - aa_mlflow_data:/mlflow
+    ports:
+      - "127.0.0.1:${BLACK_ONYX_MLFLOW_PORT:-5000}:5000"
+    # No reliable curl/wget in this image; training-orchestrator soft-starts against MLflow.
+    # Operators can probe http://127.0.0.1:${BLACK_ONYX_MLFLOW_PORT:-5000}/health when needed.
+
+  # Point detection apps at shared Black Onyx Qdrant (no second Qdrant here).
+  # App overlay: deploy/detection/compose/docker-compose.apps.yml
+  # (via docker-compose.detection-apps.yml); QDRANT_URL=http://qdrant:6333
+
+volumes:
+  aa_postgres_data:
+    name: blackonyx_aa_postgres_data
+  aa_redpanda_data:
+    name: blackonyx_aa_redpanda_data
+  aa_opensearch_data:
+    name: blackonyx_aa_opensearch_data
+  aa_minio_data:
+    name: blackonyx_aa_minio_data
+  aa_redis_data:
+    name: blackonyx_aa_redis_data
+  aa_mlflow_data:
+    name: blackonyx_aa_mlflow_data

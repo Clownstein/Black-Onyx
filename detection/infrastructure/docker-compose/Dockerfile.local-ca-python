@@ -1,0 +1,4 @@
+FROM python:3.12.11-slim
+COPY infrastructure/docker-compose/certs/extra-ca.crt /usr/local/share/ca-certificates/extra-ca.crt
+RUN update-ca-certificates
+ENV PIP_DEFAULT_TIMEOUT=180 PIP_RETRIES=15

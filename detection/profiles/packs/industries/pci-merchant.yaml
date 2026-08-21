@@ -1,0 +1,41 @@
+pack_id: pci-merchant
+kind: industry
+version: '4.0'
+title: Retail / Payment Merchant Overlay
+recommended_backbone:
+- pci-dss-4
+- cis-v8-ig2
+extends_surfaces:
+- network
+- webapp
+- host
+checks:
+- check_id: pci.merchant.pos-inventory
+  title: POS / payment terminal inventory
+  surfaces:
+  - host
+  - network
+  automation: hybrid
+  severity_default: high
+  evidence_types:
+  - detector_hit
+- check_id: pci.merchant.no-chd-chat
+  title: No CHD in email tickets or chat
+  surfaces:
+  - webapp
+  - host
+  automation: hybrid
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+- check_id: pci.merchant.wifi-seg
+  title: Card-present Wi-Fi isolated from guest
+  surfaces:
+  - network
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - cross_zone_flow

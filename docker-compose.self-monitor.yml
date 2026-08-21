@@ -1,0 +1,52 @@
+# Self-monitoring overlay: enroll the Black Onyx host as an asset and turn on
+# telemetry-gap alerting.
+#
+# Including this file IS the opt-in — there is no extra --profile flag.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.platform.yml \
+#     -f docker-compose.detection-core.yml -f docker-compose.detection-apps.yml \
+#     -f docker-compose.self-monitor.yml up -d --build
+#
+# What this gives you:
+#   * The host is enrolled in asset-registry (idempotent, re-runs safely).
+#   * host-state-processor alerts when an enrolled asset stops reporting,
+#     emitting findings.host-state -> correlation-engine -> incident-api.
+#
+# What this does NOT do: install a host collector. Shipping host telemetry needs
+# osquery + Vector on the host itself — see detection/collectors/installer/.
+# On Docker Desktop (Windows/macOS) a containerized collector would observe the
+# Linux VM, not your actual host, which is why that step stays native.
+
+services:
+  collector-enroll:
+    build:
+      context: .
+      dockerfile: services/asset-registry/Dockerfile
+    container_name: blackonyx-collector-enroll
+    restart: "no"
+    # Reuses the asset-registry image purely for its Python + httpx runtime;
+    # the script is mounted rather than baked so it stays reviewable in-tree.
+    volumes:
+      - ./deploy/detection/self-monitor/enroll.py:/enroll.py:ro
+    entrypoint: ["python", "/enroll.py"]
+    environment:
+      ENROLL_REGISTRY_URL: http://asset-registry:8081
+      ENROLL_TENANT_ID: ${SELF_MONITOR_TENANT_ID:-tenant-demo}
+      ENROLL_ASSET_ID: ${SELF_MONITOR_ASSET_ID:-black-onyx-self}
+      ENROLL_ASSET_NAME: ${SELF_MONITOR_ASSET_NAME:-Black Onyx host}
+      ENROLL_ENVIRONMENT: ${SELF_MONITOR_ENVIRONMENT:-production}
+      ENROLL_SERVICE_KEY: ${ASSET_REGISTRY_SERVICE_KEY:-dev-service-key}
+    depends_on:
+      asset-registry:
+        condition: service_healthy
+
+  # Heartbeat is wired in docker-compose.detection-apps.yml and switched on here.
+  host-state-processor:
+    environment:
+      HOST_STATE_PROCESSOR_ENABLE_HEARTBEAT: "true"
+      HOST_STATE_PROCESSOR_HEARTBEAT_TENANT_IDS: ${SELF_MONITOR_TENANT_ID:-tenant-demo}
+      HOST_STATE_PROCESSOR_STALE_AFTER_SECONDS: ${SELF_MONITOR_STALE_AFTER_SECONDS:-900}
+      HOST_STATE_PROCESSOR_ASSET_REGISTRY_SERVICE_KEY: ${ASSET_REGISTRY_SERVICE_KEY:-dev-service-key}
+    depends_on:
+      asset-registry:
+        condition: service_healthy

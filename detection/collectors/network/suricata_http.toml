@@ -1,0 +1,52 @@
+# Vector profile: ship Suricata EVE JSON alerts to Black Onyx ingestion-gateway.
+# Usage: vector --config collectors/network/suricata_http.toml
+#
+# Configure Suricata eve-log output (JSON lines), typically:
+#   /var/log/suricata/eve.json
+#
+# NOTE: ingestion-gateway requires Crockford ULID event_id.
+
+[sources.suricata_eve]
+type = "file"
+include = ["/var/log/suricata/eve.json"]
+read_from = "beginning"
+ignore_older_secs = 86400
+
+[transforms.suricata_alerts_only]
+type = "filter"
+inputs = ["suricata_eve"]
+condition = '''
+raw = parse_json(.message) ?? {}
+raw.event_type == "alert"
+'''
+
+[transforms.suricata_envelope]
+type = "remap"
+inputs = ["suricata_alerts_only"]
+source = '''
+raw = parse_json!(.message)
+. = {}
+.schema_version = "1.0"
+# Replace with Crockford ULID (gateway rejects UUID).
+.event_id = get_env_var("AA_EVENT_ID_OVERRIDE") ?? "01HXSURICATA00000000000000"
+.event_type = "suricata.alert"
+.tenant_id = get_env_var!("AA_TENANT_ID")
+.occurred_at = format_timestamp!(now(), format: "%+")
+.ingested_at = .occurred_at
+.source.collector_id = get_env_var!("AA_COLLECTOR_ID")
+.source.source_type = "suricata"
+.asset.asset_id = get_env_var!("AA_ASSET_ID")
+.payload = raw
+.payload.event_type = "suricata.alert"
+.payload.sensor_id = get_env_var!("AA_SENSOR_ID")
+.payload.asset_id = get_env_var!("AA_ASSET_ID")
+'''
+
+[sinks.gateway_suricata]
+type = "http"
+inputs = ["suricata_envelope"]
+uri = "${AA_GATEWAY_URL:-http://127.0.0.1:8080}/api/v1/ingest/suricata"
+method = "post"
+encoding.codec = "json"
+request.headers.X-API-Key = "${AA_INGEST_KEY}"
+request.headers.X-Tenant-Id = "${AA_TENANT_ID}"

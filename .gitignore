@@ -1,0 +1,84 @@
+# Configuration
+config.yaml
+.env
+.secrets
+
+# Python
+__pycache__/
+.pytest_cache/
+.pytest-tmp/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+.uv-cache/
+.playwright-browsers/
+web/node_modules/
+web/playwright-report/
+web/test-results/
+*.tsbuildinfo
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+.claude/
+.codex/
+.agents/
+# Agent instruction files are local workspace guidance. This applies at every depth.
+AGENTS.md
+*.swp
+*.swo
+
+# Logs
+*.log
+app.log
+
+# Databases / state
+*.sqlite
+*.db
+.checkpoints/
+
+# Local model artifacts
+*.gguf
+
+# Detection-plane / absorbed AutoAnalyzer artifacts
+AutoAnalyzer/
+/gpt-oss-tools/
+detection/models/antares-1b/
+**/antares-1b/**/*.bin
+**/antares-1b/**/*.safetensors
+**/antares-1b/**/*.gguf
+**/antares-1b/**/tokenizer.model
+detection/**/.venv/
+services/**/.venv/
+detection/**/node_modules/
+**/docker-compose/.env.local
+detection/infrastructure/docker-compose/.env.local
+**/mlruns/
+.mlflow-local-registry.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Code review graph
+.code-review-graph/
+
+# Local agent/debug junk — never commit
+.tmp_*
+.tmp_cookies.txt
+.firecrawl/
+ReactTemplate/
+preview-screenshot.png
+*-search.json
+clipboard-search.json
+clipboard.md
+extracted-research.md

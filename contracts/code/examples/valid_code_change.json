@@ -1,0 +1,31 @@
+{
+  "event_type": "code.change",
+  "repository_id": "repo-payments",
+  "provider": "github",
+  "repository_url_hash": "sha256:repo",
+  "default_branch": "main",
+  "base_commit": "91bfc7a",
+  "head_commit": "25d874c",
+  "pull_request_number": 481,
+  "author_id_hash": "sha256:author",
+  "files": [
+    {
+      "path": "src/auth/session.py",
+      "language": "python",
+      "status": "modified",
+      "additions": 8,
+      "deletions": 3,
+      "diff": "@@ ...",
+      "changed_functions": [
+        {
+          "name": "create_session",
+          "start_line": 88,
+          "end_line": 126,
+          "before": "...",
+          "after": "..."
+        }
+      ]
+    }
+  ],
+  "scanner_findings": []
+}

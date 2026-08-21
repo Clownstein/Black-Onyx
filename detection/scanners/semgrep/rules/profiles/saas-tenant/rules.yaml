@@ -1,0 +1,34 @@
+rules:
+  - id: saas-tenant-raw-sql-string-format
+    languages: [python]
+    severity: WARNING
+    message: >-
+      Building SQL via f-string / string concatenation risks tenant-scope
+      bypass and SQL injection. Use parameterized, tenant-filtered queries.
+    metadata:
+      profile: saas-tenant
+      category: security
+      cwe: "CWE-89"
+      concern: tenant-isolation
+    patterns:
+      - pattern-either:
+          - pattern: $CUR.execute(f"...")
+          - pattern: $CUR.execute("..." % ...)
+          - pattern: $CUR.execute("..." + ...)
+
+  - id: saas-tenant-disabled-rls
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Disabling row-level security / tenant guard removes multi-tenant
+      isolation. Keep tenant filters enforced on every query.
+    metadata:
+      profile: saas-tenant
+      category: security
+      cwe: "CWE-284"
+      concern: tenant-isolation
+    patterns:
+      - pattern-either:
+          - pattern: $X.tenant_filter = False
+          - pattern: $X.enforce_tenant = False
+          - pattern: $X.rls_enabled = False

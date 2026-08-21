@@ -1,0 +1,23 @@
+# UNSAFE lab escape hatch: disable OpenSearch security plugin (plaintext HTTP).
+# Only for local debugging. Do not use on networked hosts.
+#
+#   docker compose ... -f docker-compose.opensearch-insecure.yml up -d
+
+services:
+  opensearch:
+    environment:
+      plugins.security.disabled: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: ""
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  incident-api:
+    environment:
+      OPENSEARCH_URL: http://opensearch:9200
+      OPENSEARCH_USERNAME: ""
+      OPENSEARCH_PASSWORD: ""
+      OPENSEARCH_VERIFY_TLS: "false"

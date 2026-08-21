@@ -1,0 +1,20 @@
+version: '1.0'
+scanners:
+  owasp-asvs:
+  - iso.27001.app.injection
+  - cis.v8.16.appsec
+  - saas.tenant.isolation
+  - surface.webapp.sast
+  pci-dss:
+  - pci.3.no-sad
+  - pci.6.payment-scripts
+  cis-appsec:
+  - cis.v8.16.appsec
+  - saas.sdlc
+  - ccm.ais.images-scanned
+  saas-tenant:
+  - saas.tenant.isolation
+  secrets-scan:
+  - iso.27001.app.secrets
+  owasp-injection:
+  - iso.27001.app.injection

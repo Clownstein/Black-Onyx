@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: host-state-processor
+  namespace: {{ .Values.namespaces.processing }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: host-state-processor
+spec:
+  replicas: {{ .Values.hostStateProcessor.replicaCount }}
+  selector:
+    matchLabels:
+      app: host-state-processor
+  template:
+    metadata:
+      labels:
+        app: host-state-processor
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: host-state-processor
+          image: {{ .Values.hostStateProcessor.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.hostStateProcessor.service.port }}
+          env:
+            - name: HOST_STATE_PROCESSOR_KAFKA_BROKERS
+              value: redpanda:9092
+          resources:
+            {{- toYaml .Values.hostStateProcessor.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem }}
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.hostStateProcessor.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.hostStateProcessor.service.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: host-state-processor
+  namespace: {{ .Values.namespaces.processing }}
+spec:
+  selector:
+    app: host-state-processor
+  ports:
+    - port: {{ .Values.hostStateProcessor.service.port }}
+      targetPort: {{ .Values.hostStateProcessor.service.port }}

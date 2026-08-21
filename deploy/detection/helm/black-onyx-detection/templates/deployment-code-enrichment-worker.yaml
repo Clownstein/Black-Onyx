@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: code-enrichment-worker
+  namespace: {{ .Values.namespaces.processing }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: code-enrichment-worker
+spec:
+  replicas: {{ .Values.codeEnrichmentWorker.replicaCount }}
+  selector:
+    matchLabels:
+      app: code-enrichment-worker
+  template:
+    metadata:
+      labels:
+        app: code-enrichment-worker
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: code-enrichment-worker
+          image: {{ .Values.codeEnrichmentWorker.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.codeEnrichmentWorker.service.port }}
+          env:
+            - name: CODE_ENRICHMENT_KAFKA_BROKERS
+              value: redpanda:9092
+            - name: CODE_ENRICHMENT_PORT
+              value: {{ .Values.codeEnrichmentWorker.service.port | quote }}
+            - name: CODE_ENRICHMENT_ENABLE_KAFKA
+              value: "true"
+            - name: CODE_ENRICHMENT_INCIDENT_API_URL
+              value: http://incident-api:8083
+            - name: CODE_ENRICHMENT_INCIDENT_API_SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: black-onyx-detection-secrets
+                  key: incidentApiServiceKey
+                  optional: true
+          resources:
+            {{- toYaml .Values.codeEnrichmentWorker.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.codeEnrichmentWorker.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.codeEnrichmentWorker.service.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: code-enrichment-worker
+  namespace: {{ .Values.namespaces.processing }}
+spec:
+  selector:
+    app: code-enrichment-worker
+  ports:
+    - port: {{ .Values.codeEnrichmentWorker.service.port }}
+      targetPort: {{ .Values.codeEnrichmentWorker.service.port }}

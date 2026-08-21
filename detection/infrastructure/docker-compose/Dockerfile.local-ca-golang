@@ -1,0 +1,4 @@
+FROM golang:1.23.10-bookworm
+COPY infrastructure/docker-compose/certs/extra-ca.crt /usr/local/share/ca-certificates/extra-ca.crt
+RUN update-ca-certificates
+ENV GOPROXY=https://proxy.golang.org,direct

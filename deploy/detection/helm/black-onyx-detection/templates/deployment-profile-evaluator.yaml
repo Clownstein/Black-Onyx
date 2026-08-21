@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: profile-evaluator
+  namespace: {{ .Values.namespaces.processing }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: profile-evaluator
+spec:
+  replicas: {{ .Values.profileEvaluator.replicaCount }}
+  selector:
+    matchLabels:
+      app: profile-evaluator
+  template:
+    metadata:
+      labels:
+        app: profile-evaluator
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: profile-evaluator
+          image: {{ .Values.profileEvaluator.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.profileEvaluator.service.port }}
+          env:
+            - name: PROFILE_EVALUATOR_PORT
+              value: {{ .Values.profileEvaluator.service.port | quote }}
+            - name: PROFILE_EVALUATOR_ENABLE_LOOP
+              value: {{ .Values.profileEvaluator.enableLoop | quote }}
+            - name: PROFILE_EVALUATOR_INTERVAL_SEC
+              value: {{ .Values.profileEvaluator.intervalSeconds | quote }}
+            - name: PROFILE_EVALUATOR_TENANT_ID
+              value: {{ .Values.profileEvaluator.tenantId | quote }}
+            - name: PROFILE_EVALUATOR_INCIDENT_API_URL
+              value: http://incident-api:8083
+            - name: PROFILE_EVALUATOR_INCIDENT_API_SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: black-onyx-detection-secrets
+                  key: incidentApiServiceKey
+                  optional: true
+            - name: VECTOR_NOVELTY_ENABLED
+              value: "true"
+            - name: QDRANT_URL
+              value: http://qdrant:6333
+            - name: EMBEDDING_SERVICE_URL
+              value: http://embedding-worker:8115
+          resources:
+            {{- toYaml .Values.profileEvaluator.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.profileEvaluator.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.profileEvaluator.service.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: profile-evaluator
+  namespace: {{ .Values.namespaces.processing }}
+spec:
+  selector:
+    app: profile-evaluator
+  ports:
+    - port: {{ .Values.profileEvaluator.service.port }}
+      targetPort: {{ .Values.profileEvaluator.service.port }}

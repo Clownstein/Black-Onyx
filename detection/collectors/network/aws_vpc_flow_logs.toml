@@ -1,0 +1,56 @@
+# Vector profile: ship AWS VPC Flow Logs (S3-delivered, default text format) to
+# Black Onyx ingestion-gateway.
+# Usage: vector --config detection/collectors/network/aws_vpc_flow_logs.toml
+#
+# Setup: enable VPC Flow Logs with destination "S3", default log format, and
+# configure an SQS queue to receive "s3:ObjectCreated:*" notifications from
+# that bucket (standard Vector aws_s3 source pattern — Vector polls the queue,
+# not the bucket, for new-object notifications).
+#
+# Parsing is intentionally minimal here: this profile ships each flow-log line
+# mostly unparsed under payload.raw_line. The actual field parsing (and its
+# test coverage) lives in flow_processor/aws_flow_adapter.py, mirroring how
+# zeek/dns raw payloads are parsed processor-side rather than in Vector.
+#
+# NOTE: ingestion-gateway requires Crockford ULID event_id. Install a ULID
+# generator transform or preprocess; static lab IDs below are placeholders.
+
+[sources.aws_vpc_flow_logs]
+type = "aws_s3"
+region = "${AA_AWS_REGION:-us-east-1}"
+compression = "auto"
+
+[sources.aws_vpc_flow_logs.sqs]
+queue_url = "${AA_AWS_FLOWLOGS_SQS_URL}"
+
+[transforms.aws_flow_envelope]
+type = "remap"
+inputs = ["aws_vpc_flow_logs"]
+source = '''
+line = strip_whitespace(to_string!(.message))
+if starts_with(line, "version") { abort }
+if length(line) == 0 { abort }
+
+. = {}
+.schema_version = "1.0"
+.event_id = get_env_var("AA_EVENT_ID_OVERRIDE") ?? "01HXAWSFLOW00000000000000"
+.event_type = "aws.vpc_flow_log"
+.tenant_id = get_env_var!("AA_TENANT_ID")
+.occurred_at = format_timestamp!(now(), format: "%+")
+.ingested_at = .occurred_at
+.source.collector_id = get_env_var!("AA_COLLECTOR_ID")
+.source.source_type = "aws_vpc_flow_logs"
+.asset.asset_id = get_env_var!("AA_ASSET_ID")
+.payload.event_type = "aws.vpc_flow_log"
+.payload.raw_line = line
+.payload.asset_id = get_env_var!("AA_ASSET_ID")
+'''
+
+[sinks.gateway_aws_flow]
+type = "http"
+inputs = ["aws_flow_envelope"]
+uri = "${AA_GATEWAY_URL:-http://127.0.0.1:8080}/api/v1/ingest/network-flows"
+method = "post"
+encoding.codec = "json"
+request.headers.X-API-Key = "${AA_INGEST_KEY}"
+request.headers.X-Tenant-Id = "${AA_TENANT_ID}"

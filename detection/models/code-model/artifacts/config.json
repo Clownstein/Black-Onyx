@@ -1,0 +1,16 @@
+{
+  "model_name": "code-model",
+  "model_version": "2.1.0",
+  "feature_names": [
+    "has_shell_true",
+    "has_eval",
+    "secret_like",
+    "change_size_log",
+    "semgrep_high",
+    "auth_path"
+  ],
+  "policy": {
+    "advisory_only": true,
+    "allow_model_only_blocking": false
+  }
+}

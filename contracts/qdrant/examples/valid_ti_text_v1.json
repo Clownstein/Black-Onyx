@@ -1,0 +1,22 @@
+{
+  "tenant_id": "__global__",
+  "indicator_id": "ind-01JTI000000000000000000",
+  "chunk_id": "ind-01JTI000000000000000000:0",
+  "chunk_kind": "description",
+  "observable_type": "domain",
+  "observable_value": "malware-c2.example",
+  "source": "taxii:acme-cti",
+  "confidence": 80,
+  "tlp": "amber",
+  "valid_from": "2026-07-01T00:00:00.000Z",
+  "valid_until": "2026-10-01T00:00:00.000Z",
+  "valid_until_ts": 1790812800,
+  "labels": ["c2", "botnet"],
+  "campaigns": ["campaign-orange"],
+  "mitre_techniques": ["T1071.001"],
+  "text": "Domain used as HTTP C2 for botnet orange; seen with rare JA3",
+  "external_refs": [{ "source_name": "acme-cti", "url": "https://cti.example/rep/1" }],
+  "embed_model": "cisco-ai/SecureBERT2.0-biencoder",
+  "embed_version": "1",
+  "schema_version": "1.0"
+}

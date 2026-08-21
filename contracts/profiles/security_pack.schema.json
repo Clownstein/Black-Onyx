@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/schemas/security_pack.json",
+  "title": "SecurityPack",
+  "description": "Security profile pack (framework or industry) with checklist checks.",
+  "type": "object",
+  "required": ["pack_id", "kind", "version", "title", "checks"],
+  "properties": {
+    "pack_id": { "type": "string", "minLength": 1, "pattern": "^[a-z0-9][a-z0-9_.-]*$" },
+    "kind": { "type": "string", "enum": ["framework", "industry", "surface", "certification"] },
+    "version": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "description": { "type": "string" },
+    "extends_surfaces": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["network", "host", "webapp", "identity", "cloud", "code"]
+      }
+    },
+    "recommended_backbone": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/check" }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "check": {
+      "type": "object",
+      "required": ["check_id", "title", "surfaces", "automation"],
+      "properties": {
+        "check_id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "surfaces": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": ["network", "host", "webapp", "identity", "cloud", "code"]
+          }
+        },
+        "automation": { "type": "string", "enum": ["auto", "manual", "hybrid"] },
+        "severity_default": {
+          "type": "string",
+          "enum": ["info", "low", "medium", "high", "critical"]
+        },
+        "mitre_techniques": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^T[0-9]{4}(\\.[0-9]{3})?$" }
+        },
+        "evidence_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "log_presence",
+              "detector_hit",
+              "scanner_rule",
+              "config_assert",
+              "attestation",
+              "probe"
+            ]
+          }
+        },
+        "bindings": {
+          "type": "object",
+          "properties": {
+            "detectors": { "type": "array", "items": { "type": "string" } },
+            "scanners": { "type": "array", "items": { "type": "string" } },
+            "required_log_sources": { "type": "array", "items": { "type": "string" } }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

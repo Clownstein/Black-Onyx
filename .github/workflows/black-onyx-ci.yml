@@ -1,0 +1,240 @@
+name: black-onyx-ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  tip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --extra dev
+      - run: uv run pytest tests -q
+      - name: black-onyx-tools package tests
+        working-directory: black-onyx-tools
+        run: |
+          uv sync --extra dev
+          uv run pytest -q
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
+      - run: npm test -- --run
+        working-directory: web
+      - run: npm run lint -- --max-warnings=0
+        working-directory: web
+      - run: npm run build
+        working-directory: web
+      - name: Install Playwright Chromium
+        run: node node_modules/playwright/cli.js install --with-deps chromium
+        working-directory: web
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright-browsers
+      - name: Browser acceptance
+        run: npm run test:e2e
+        working-directory: web
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright-browsers
+
+  detection-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Shared package import smoke
+        # The runner's system Python is externally managed (PEP 668), so
+        # `uv pip install --system` is refused. Install into a venv instead.
+        run: |
+          uv venv
+          uv pip install ./packages/black_onyx_contracts ./packages/black_onyx_otel ./packages/black_onyx_vector ./packages/black_onyx_calibration
+          uv run python -c "import black_onyx_contracts, black_onyx_otel, black_onyx_vector, black_onyx_calibration; print('ok')"
+      - name: Contract tests
+        working-directory: detection
+        run: |
+          uv sync --extra dev
+          uv run pytest tests/contract -q
+      - name: Purple-team scorer tests
+        working-directory: detection
+        run: uv run pytest tests/integration/test_purple_team_scoring.py -q
+      - name: Detection security tests
+        # XSS/webhook: detection meta-package. RBAC/tenant: incident-api venv + PYTHONPATH.
+        run: |
+          set -euo pipefail
+          cd "${GITHUB_WORKSPACE}/detection"
+          uv sync --extra dev
+          uv run pytest tests/security/test_xss_escape.py tests/security/test_webhook_signature.py -q
+          cd "${GITHUB_WORKSPACE}/services/incident-api"
+          uv sync --extra dev
+          export PYTHONPATH="${GITHUB_WORKSPACE}/services/incident-api"
+          # incident-api conftest sets OIDC_DISABLED for unit suites; security tests set it explicitly too.
+          uv run pytest \
+            "${GITHUB_WORKSPACE}/detection/tests/security/test_tenant_isolation.py" \
+            "${GITHUB_WORKSPACE}/detection/tests/security/test_rbac.py" -q
+        working-directory: .
+      - name: Package unit tests (black_onyx_vector)
+        working-directory: packages/black_onyx_vector
+        run: |
+          uv sync --extra dev
+          uv run pytest -q
+      - name: Package unit tests (black_onyx_calibration)
+        working-directory: packages/black_onyx_calibration
+        run: |
+          uv sync --extra dev
+          uv run pytest -q
+
+  detection-services:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - asset-registry
+          - code-enrichment-worker
+          - code-processor
+          - correlation-engine
+          - embedding-worker
+          - firewall-processor
+          - flow-processor
+          - host-state-processor
+          - ids-processor
+          - incident-api
+          - inference-worker
+          - integration-hub
+          - log-processor
+          - malware-orchestrator
+          - malware-processor
+          - malware-triage
+          - metrics-processor
+          - model-gateway
+          - notification-service
+          - profile-evaluator
+          - response-orchestrator
+          - threat-intel-service
+          - training-orchestrator
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Service unit tests
+        working-directory: services/${{ matrix.service }}
+        run: |
+          uv sync --extra dev
+          uv run pytest -q
+
+  migration-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mirrored migrations are identical
+        shell: bash
+        run: |
+          for service in asset-registry incident-api integration-hub notification-service response-orchestrator smoke-consumer threat-intel-service training-orchestrator; do
+            diff -ru "services/$service/alembic/versions" "deploy/detection/migrations/$service" \
+              --exclude AGENTS.md --exclude __pycache__
+          done
+
+  model-migration-drift:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - asset-registry
+          - incident-api
+          - integration-hub
+          - notification-service
+          - response-orchestrator
+          - smoke-consumer
+          - threat-intel-service
+          - training-orchestrator
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Alembic head matches SQLAlchemy metadata
+        working-directory: services/${{ matrix.service }}
+        run: |
+          uv sync
+          uv run python ../../detection/scripts/development/check_migration_parity.py --service .
+
+  ingestion-gateway:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/ingestion-gateway
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.x"
+      - run: go test ./...
+
+  compose-and-helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Docker Compose config (platform overlays)
+        # docker-compose.yml deliberately hard-requires BLACK_ONYX_AUTH_SECRET
+        # (`:?`) so a real deployment cannot start without one. Config validation
+        # only needs *a* value, so supply an obviously-fake one here rather than
+        # weakening that guard.
+        env:
+          BLACK_ONYX_AUTH_SECRET: ci-compose-validation-only-not-a-real-secret
+          API_KEYS: ci-ingest-key-not-a-real-secret
+          BLACK_ONYX_EXTERNAL_URL: https://ci.example.test
+          BLACK_ONYX_ALLOWED_HOSTS: '["ci.example.test"]'
+          BLACK_ONYX_HOSTNAME: ci.example.test
+        run: |
+          base=( -f docker-compose.yml -f docker-compose.platform.yml )
+          apps=( "${base[@]}" -f docker-compose.detection-apps.yml )
+          docker compose "${base[@]}" config >/dev/null
+          docker compose "${base[@]}" -f docker-compose.detection-core.yml config >/dev/null
+          docker compose "${base[@]}" -f docker-compose.detection-core.yml -f docker-compose.detection-lab-ports.yml config >/dev/null
+          docker compose "${apps[@]}" config >/dev/null
+          docker compose "${base[@]}" -f docker-compose.detection-core.yml -f docker-compose.detection-apps.yml -f docker-compose.self-monitor.yml config >/dev/null
+          docker compose "${apps[@]}" -f detection/infrastructure/docker-compose/docker-compose.observability.yml config >/dev/null
+          docker compose "${apps[@]}" -f detection/infrastructure/docker-compose/docker-compose.otel.yml config >/dev/null
+          docker compose "${base[@]}" -f docker-compose.production.yml config >/dev/null
+          docker compose "${apps[@]}" -f docker-compose.detection-lab-dev.yml config >/dev/null
+          docker compose "${apps[@]}" -f docker-compose.detection-cape-lab.yml config >/dev/null
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.3
+      - name: Helm template
+        run: |
+          helm template black-onyx-detection deploy/detection/helm/black-onyx-detection/ >/dev/null
+          helm template black-onyx-detection deploy/detection/helm/black-onyx-detection/ \
+            -f deploy/detection/helm/black-onyx-detection/values-prod.yaml >/dev/null
+          helm template black-onyx-detection deploy/detection/helm/black-onyx-detection/ \
+            -f deploy/detection/helm/black-onyx-detection/values-airgap.yaml >/dev/null
+
+  detection-runtime-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      BLACK_ONYX_AUTH_SECRET: ci-runtime-smoke-only-not-a-real-secret
+      API_KEYS: ci-runtime-ingest-key
+      INCIDENT_API_SERVICE_KEY: ci-runtime-incident-key
+      ASSET_REGISTRY_SERVICE_KEY: ci-runtime-asset-key
+      POSTGRES_PASSWORD: ci-runtime-postgres-password
+      ALLOW_DEMO_KEYS: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start hermetic core detection stack
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.platform.yml -f docker-compose.detection-core.yml \
+            up -d --build --wait --wait-timeout 240 \
+            postgres redpanda redpanda-init ingestion-gateway smoke-consumer incident-api asset-registry
+      - name: Verify private-network ingest and registry write
+        shell: pwsh
+        run: ./scripts/smoke_detection_infra.ps1 -RequireStack
+      - name: Collect runtime logs
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.platform.yml -f docker-compose.detection-core.yml logs --no-color
+      - name: Tear down runtime stack
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.platform.yml -f docker-compose.detection-core.yml down -v --remove-orphans

@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-gateway
+  namespace: {{ .Values.namespaces.models }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: model-gateway
+spec:
+  replicas: {{ .Values.modelGateway.replicaCount }}
+  selector:
+    matchLabels:
+      app: model-gateway
+  template:
+    metadata:
+      labels:
+        app: model-gateway
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: model-gateway
+          image: {{ .Values.modelGateway.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          env:
+            - name: CANARY_PERCENT
+              value: {{ .Values.modelGateway.canaryPercent | quote }}
+            - name: LOG_MODEL_URL
+              value: "http://log-model:{{ .Values.logModel.service.port }}"
+            - name: NETWORK_MODEL_URL
+              value: "http://network-model:{{ .Values.networkModel.service.port }}"
+            - name: METRICS_MODEL_URL
+              value: "http://metrics-model:{{ .Values.metricsModel.service.port }}"
+            - name: CODE_MODEL_URL
+              value: "http://code-model:{{ .Values.codeModel.service.port }}"
+            - name: HOST_STATE_MODEL_URL
+              value: "http://host-state-model:{{ .Values.hostStateModel.service.port }}"
+          resources:
+            {{- toYaml .Values.modelGateway.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - containerPort: {{ .Values.modelGateway.service.port }}
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.modelGateway.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.modelGateway.service.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: model-gateway
+  namespace: {{ .Values.namespaces.models }}
+spec:
+  selector:
+    app: model-gateway
+  ports:
+    - port: {{ .Values.modelGateway.service.port }}
+      targetPort: {{ .Values.modelGateway.service.port }}

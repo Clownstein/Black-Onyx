@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: firewall-processor
+  namespace: {{ .Values.namespaces.processing }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: firewall-processor
+spec:
+  replicas: {{ .Values.firewallProcessor.replicaCount }}
+  selector:
+    matchLabels:
+      app: firewall-processor
+  template:
+    metadata:
+      labels:
+        app: firewall-processor
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: firewall-processor
+          image: {{ .Values.firewallProcessor.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.firewallProcessor.service.port }}
+          env:
+            - name: FIREWALL_PROCESSOR_KAFKA_BROKERS
+              value: redpanda:9092
+          resources:
+            {{- toYaml .Values.firewallProcessor.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem }}
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.firewallProcessor.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.firewallProcessor.service.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: firewall-processor
+  namespace: {{ .Values.namespaces.processing }}
+spec:
+  selector:
+    app: firewall-processor
+  ports:
+    - port: {{ .Values.firewallProcessor.service.port }}
+      targetPort: {{ .Values.firewallProcessor.service.port }}

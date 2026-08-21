@@ -1,0 +1,98 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: [alertmanager:9093]
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: [localhost:9090]
+
+  # Native /metrics endpoints only — other platform-health targets are blackbox-only.
+  - job_name: black-onyx-services
+    metrics_path: /metrics
+    scrape_timeout: 5s
+    static_configs:
+      - targets:
+          - ingestion-gateway:8080
+          - flow-processor:8094
+          - ids-processor:8100
+          - response-orchestrator:8111
+        labels:
+          stack: black-onyx
+
+  - job_name: redpanda
+    metrics_path: /public_metrics
+    static_configs:
+      - targets: [redpanda:9644]
+        labels:
+          component: redpanda
+
+  - job_name: postgres
+    static_configs:
+      - targets: [postgres-exporter:9187]
+
+  - job_name: redis
+    static_configs:
+      - targets: [redis-exporter:9121]
+
+  - job_name: platform-health
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - http://ingestion-gateway:8080/health/live
+          - http://asset-registry:8081/health/live
+          - http://incident-api:8083/health/live
+          - http://log-processor:8082/health/live
+          - http://correlation-engine:8084/health/live
+          - http://notification-service:8086/health/live
+          - http://inference-worker:8088/health/live
+          - http://model-gateway:8091/health/live
+          - http://code-processor:8093/health/live
+          - http://flow-processor:8094/health/live
+          - http://metrics-processor:8095/health/live
+          - http://training-orchestrator:8096/health/live
+          - http://host-state-processor:8097/health/live
+          - http://threat-intel-service:8098/health/live
+          - http://firewall-processor:8099/health/live
+          - http://ids-processor:8100/health/live
+          - http://integration-hub:8105/health/live
+          - http://response-orchestrator:8111/health/live
+          - http://malware-triage:8112/health/live
+          - http://malware-orchestrator:8113/health/live
+          - http://malware-processor:8114/health/live
+          - http://embedding-worker:8115/health/live
+          - http://profile-evaluator:8116/health/live
+          - http://minio:9000/minio/health/live
+          - http://mlflow:5000/health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+  - job_name: optional-capability-health
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - http://qdrant:6333/healthz
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115

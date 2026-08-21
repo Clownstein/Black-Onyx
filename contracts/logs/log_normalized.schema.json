@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/schemas/log_normalized.json",
+  "title": "LogNormalizedEvent",
+  "description": "Normalized log payload after Drain3 templating (ANOMALY_DETECTION_PLATFORM.md §5.3).",
+  "type": "object",
+  "required": ["event_type", "template_id", "template", "severity"],
+  "properties": {
+    "event_type": { "const": "log.normalized" },
+    "template_id": { "type": "string", "minLength": 1 },
+    "template": { "type": "string", "minLength": 1 },
+    "parameters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "type"],
+        "properties": {
+          "name": { "type": "string" },
+          "type": { "type": "string" },
+          "value_hash": { "type": "string" },
+          "category": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "sequence_key": { "type": "string" },
+    "severity": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": true
+}

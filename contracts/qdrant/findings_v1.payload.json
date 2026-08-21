@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/qdrant/findings_v1.payload.json",
+  "title": "FindingsV1Payload",
+  "type": "object",
+  "required": [
+    "tenant_id",
+    "finding_id",
+    "finding_type",
+    "asset_id",
+    "calibrated_score",
+    "occurred_at",
+    "occurred_at_ts",
+    "embed_model",
+    "embed_version"
+  ],
+  "properties": {
+    "tenant_id": {
+      "type": "string"
+    },
+    "finding_id": {
+      "type": "string"
+    },
+    "finding_type": {
+      "type": "string"
+    },
+    "modality": {
+      "type": "string"
+    },
+    "asset_id": {
+      "type": "string"
+    },
+    "service_id": {
+      "type": "string"
+    },
+    "site_id": {
+      "type": "string"
+    },
+    "model_name": {
+      "type": "string"
+    },
+    "calibrated_score": {
+      "type": "number"
+    },
+    "severity_hint": {
+      "type": "string"
+    },
+    "incident_id": {
+      "type": "string"
+    },
+    "mitre_tactics": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "mitre_techniques": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "contributor_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "observables": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "summary_text": {
+      "type": "string"
+    },
+    "occurred_at": {
+      "type": "string"
+    },
+    "occurred_at_ts": {
+      "type": "integer"
+    },
+    "expires_at_ts": {
+      "type": "integer"
+    },
+    "embed_model": {
+      "type": "string"
+    },
+    "embed_version": {
+      "type": "string"
+    },
+    "schema_version": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/schemas/metric_sample.json",
+  "title": "MetricSample",
+  "description": "Metric sample payload (ANOMALY_DETECTION_PLATFORM.md §5.6).",
+  "type": "object",
+  "required": ["event_type", "metric_name", "value"],
+  "properties": {
+    "event_type": { "const": "metric.sample" },
+    "metric_name": { "type": "string", "minLength": 1 },
+    "value": { "type": "number" },
+    "unit": { "type": ["string", "null"] },
+    "temporality": { "type": ["string", "null"] },
+    "dimensions": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "sample_interval_seconds": { "type": ["integer", "null"] }
+  },
+  "additionalProperties": true
+}

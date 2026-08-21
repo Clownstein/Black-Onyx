@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: integration-hub
+  namespace: {{ .Values.namespaces.application }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: integration-hub
+spec:
+  replicas: {{ .Values.integrationHub.replicaCount }}
+  selector:
+    matchLabels:
+      app: integration-hub
+  template:
+    metadata:
+      labels:
+        app: integration-hub
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: integration-hub
+          image: {{ .Values.integrationHub.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.integrationHub.service.port }}
+          env:
+            - name: INTEGRATION_HUB_DATABASE_URL
+              value: {{ .Values.integrationHub.databaseUrl | quote }}
+            - name: INTEGRATION_HUB_THREAT_INTEL_URL
+              value: http://threat-intel-service:{{ .Values.threatIntelService.service.port }}
+            - name: INTEGRATION_HUB_INCIDENT_API_URL
+              value: http://incident-api:{{ .Values.incidentApi.service.port }}
+            - name: INTEGRATION_HUB_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: black-onyx-detection-secrets
+                  key: integrationHubApiKey
+                  optional: true
+            - name: INTEGRATION_HUB_THREAT_INTEL_SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: black-onyx-detection-secrets
+                  key: threatIntelServiceKey
+                  optional: true
+            - name: INTEGRATION_HUB_INCIDENT_API_SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: black-onyx-detection-secrets
+                  key: incidentApiServiceKey
+                  optional: true
+          resources:
+            {{- toYaml .Values.integrationHub.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem }}
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.integrationHub.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.integrationHub.service.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: integration-hub
+  namespace: {{ .Values.namespaces.application }}
+spec:
+  selector:
+    app: integration-hub
+  ports:
+    - port: {{ .Values.integrationHub.service.port }}
+      targetPort: {{ .Values.integrationHub.service.port }}

@@ -1,0 +1,23 @@
+{
+  "event_type": "host_state.process_event",
+  "tenant_id": "tenant-acme",
+  "asset_id": "host-payments-03",
+  "service_id": "payments-api",
+  "occurred_at": "2026-07-26T20:41:02.123Z",
+  "hostname": "payments-03",
+  "os_family": "windows",
+  "process": {
+    "pid": 4242,
+    "ppid": 1200,
+    "name": "powershell.exe",
+    "path": "C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe",
+    "cmdline": "powershell.exe -enc ZgBvAG8A",
+    "user": "NT AUTHORITY\\\\SYSTEM",
+    "hashes": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "parent_name": "winword.exe",
+    "parent_path": "C:\\\\Program Files\\\\Microsoft Office\\\\root\\\\Office16\\\\WINWORD.EXE",
+    "action": "create"
+  }
+}

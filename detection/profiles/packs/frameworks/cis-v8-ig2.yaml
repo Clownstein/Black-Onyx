@@ -1,0 +1,39 @@
+pack_id: cis-v8-ig2
+kind: framework
+version: '8.1'
+title: CIS Controls v8.1 IG2
+extends_surfaces:
+- network
+- host
+- webapp
+- identity
+- cloud
+- code
+checks:
+- check_id: cis.v8.ig2.allowlisting
+  title: Application allowlisting on high-value hosts
+  surfaces:
+  - host
+  automation: hybrid
+  severity_default: high
+  evidence_types:
+  - detector_hit
+- check_id: cis.v8.ig2.waf
+  title: WAF for public web apps
+  surfaces:
+  - webapp
+  automation: hybrid
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - deny_spike
+- check_id: cis.v8.ig2.email-security
+  title: Email SPF DKIM DMARC
+  surfaces:
+  - network
+  automation: hybrid
+  severity_default: medium
+  evidence_types:
+  - detector_hit

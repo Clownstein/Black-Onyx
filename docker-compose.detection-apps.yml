@@ -1,0 +1,11 @@
+# Detection application services (absorbed AutoAnalyzer).
+# Requires docker-compose.yml + docker-compose.platform.yml first.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.platform.yml \
+#     -f docker-compose.detection-apps.yml up -d --build
+#
+# Build contexts resolve to repo root; Dockerfiles live under services/.
+# Point vector clients at the shared Black Onyx `qdrant` service (not a second Qdrant).
+
+include:
+  - path: deploy/detection/compose/docker-compose.apps.yml

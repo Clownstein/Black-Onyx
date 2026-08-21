@@ -1,0 +1,28 @@
+# Optional CAPE lab overlay for malware services.
+# Does NOT start CAPEv2 guests — points malware-orchestrator at an external lab.
+# Fail-closed defaults remain: empty CAPE_URL keeps orchestrator without a live sandbox.
+#
+# From repo root:
+#   $env:CAPE_URL = "https://cape.lab.example"
+#   # optional: $env:CAPE_TOKEN / MALWARE_ORCHESTRATOR_CAPE_TOKEN via .env
+#   docker compose -f docker-compose.yml -f docker-compose.platform.yml `
+#     -f docker-compose.detection-apps.yml `
+#     -f docker-compose.detection-cape-lab.yml up -d --build
+#
+# Smoke: powershell -File scripts/smoke_malware_lab.ps1
+# Docs: detection/docs/deployment/malware-lab.md
+
+services:
+  malware-orchestrator:
+    environment:
+      # Prefer CAPE_URL; leave unset/empty for fail-closed (no fabricated detonation).
+      MALWARE_ORCHESTRATOR_CAPE_URL: ${CAPE_URL:-}
+      MALWARE_ORCHESTRATOR_CAPE_TOKEN: ${CAPE_TOKEN:-}
+      MALWARE_ORCHESTRATOR_DRAKVUF_URL: ${DRAKVUF_URL:-}
+      MALWARE_ORCHESTRATOR_DRAKVUF_TOKEN: ${DRAKVUF_TOKEN:-}
+
+  malware-triage:
+    environment:
+      # Lab overlay documents external dynamic analysis; static triage stays fail-closed
+      # without real tools/ONNX (ALLOW_HEURISTIC_FALLBACK remains false from apps compose).
+      MALWARE_TRIAGE_ALLOW_HEURISTIC_FALLBACK: "false"

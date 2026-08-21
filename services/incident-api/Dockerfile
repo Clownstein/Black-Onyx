@@ -1,0 +1,41 @@
+# Hardened multi-stage image — pinned base (never :latest). Non-root uid 10001.
+FROM python:3.12.11-slim AS builder
+WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+COPY packages/black_onyx_contracts /packages/black_onyx_contracts
+COPY packages/black_onyx_otel /packages/black_onyx_otel
+COPY packages/black_onyx_vector /packages/black_onyx_vector
+COPY services/incident-api /app
+
+RUN pip install --no-cache-dir /packages/black_onyx_contracts \
+    && pip install --no-cache-dir /packages/black_onyx_otel \
+    && pip install --no-cache-dir /packages/black_onyx_vector \
+    && pip install --no-cache-dir .
+
+FROM python:3.12.11-slim AS runtime
+WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+RUN groupadd --gid 10001 app \
+    && useradd --uid 10001 --gid app --create-home --shell /usr/sbin/nologin app
+
+COPY --from=builder --chown=app:app /usr/local /usr/local
+COPY --from=builder --chown=app:app /app /app
+COPY --from=builder --chown=app:app /packages /packages
+COPY --chown=app:app detection/profiles/ /app/profiles/
+
+ENV SECURITY_PROFILES_ROOT=/app/profiles
+
+USER app:app
+EXPOSE 8083
+CMD ["uvicorn", "incident_api.main:app", "--host", "0.0.0.0", "--port", "8083"]

@@ -1,0 +1,46 @@
+pack_id: nydfs-500
+kind: industry
+version: '500'
+title: Insurance / NYDFS 23 NYCRR 500
+recommended_backbone:
+- glba-ffiec
+- soc2-security
+extends_surfaces:
+- identity
+- webapp
+- host
+- cloud
+checks:
+- check_id: nydfs.ciso
+  title: Qualified CISO designated
+  surfaces:
+  - identity
+  automation: manual
+  severity_default: high
+  evidence_types:
+  - attestation
+- check_id: nydfs.mfa-encrypt
+  title: MFA encryption audit trails
+  surfaces:
+  - identity
+  - webapp
+  automation: auto
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+- check_id: nydfs.vendor
+  title: Third-party security in contracts
+  surfaces:
+  - cloud
+  automation: manual
+  severity_default: high
+  evidence_types:
+  - attestation
+- check_id: nydfs.notify
+  title: Regulator/consumer incident notification
+  surfaces:
+  - identity
+  automation: manual
+  severity_default: critical
+  evidence_types:
+  - attestation

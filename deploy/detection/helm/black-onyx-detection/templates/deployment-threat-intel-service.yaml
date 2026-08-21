@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: threat-intel-service
+  namespace: {{ .Values.namespaces.application }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: threat-intel-service
+spec:
+  replicas: {{ .Values.threatIntelService.replicaCount }}
+  selector:
+    matchLabels:
+      app: threat-intel-service
+  template:
+    metadata:
+      labels:
+        app: threat-intel-service
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: threat-intel-service
+          image: {{ .Values.threatIntelService.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.threatIntelService.service.port }}
+          env:
+            - name: THREAT_INTEL_DATABASE_URL
+              value: {{ .Values.threatIntelService.databaseUrl | quote }}
+            - name: THREAT_INTEL_AIRGAP_MODE
+              value: {{ (or .Values.featureFlags.airgapMode .Values.threatIntel.airgapMode) | quote }}
+            - name: THREAT_INTEL_SERVICE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: black-onyx-detection-secrets
+                  key: threatIntelServiceKey
+                  optional: true
+            {{- if and .Values.featureFlags.externalTiPolling (not .Values.featureFlags.airgapMode) }}
+            - name: THREAT_INTEL_TAXII_URL
+              value: {{ .Values.threatIntel.taxiiUrl | default "" | quote }}
+            - name: THREAT_INTEL_MISP_URL
+              value: {{ .Values.threatIntel.mispUrl | default "" | quote }}
+            {{- else }}
+            - name: THREAT_INTEL_TAXII_URL
+              value: ""
+            - name: THREAT_INTEL_MISP_URL
+              value: ""
+            {{- end }}
+          resources:
+            {{- toYaml .Values.threatIntelService.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem }}
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.threatIntelService.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.threatIntelService.service.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: threat-intel-service
+  namespace: {{ .Values.namespaces.application }}
+spec:
+  selector:
+    app: threat-intel-service
+  ports:
+    - port: {{ .Values.threatIntelService.service.port }}
+      targetPort: {{ .Values.threatIntelService.service.port }}

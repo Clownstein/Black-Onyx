@@ -1,0 +1,67 @@
+pack_id: zero-trust
+kind: framework
+version: 800-207
+title: Zero Trust Architecture (NIST SP 800-207)
+extends_surfaces:
+- network
+- host
+- webapp
+- identity
+- cloud
+checks:
+- check_id: zt.identity.phishing-resistant-mfa
+  title: Phishing-resistant MFA for privileged/remote
+  surfaces:
+  - identity
+  automation: auto
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+- check_id: zt.device.posture
+  title: Device posture checks before access
+  surfaces:
+  - host
+  - identity
+  automation: hybrid
+  severity_default: high
+  evidence_types:
+  - detector_hit
+- check_id: zt.network.microseg
+  title: Micro-segmentation or identity-aware proxy
+  surfaces:
+  - network
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - cross_zone_flow
+- check_id: zt.network.east-west
+  title: East-west traffic controlled
+  surfaces:
+  - network
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - failed_connection_burst
+- check_id: zt.app.per-request-authz
+  title: Per-request authorization at app layer
+  surfaces:
+  - webapp
+  automation: hybrid
+  severity_default: high
+  evidence_types:
+  - detector_hit
+- check_id: zt.data.access-logged
+  title: Data access logged with subject and decision
+  surfaces:
+  - identity
+  - webapp
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit

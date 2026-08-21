@@ -1,0 +1,132 @@
+# Black Onyx — full Docker stack.
+#
+# `docker-compose up -d`           starts Qdrant + the web UI (default profile).
+# `docker-compose run --rm cli ...` runs any CLI subcommand in the same image,
+#                                   e.g. `docker-compose run --rm cli ingest -d /app/data`.
+#
+# OCR defaults to PaddleOCR inside the containers (see Dockerfile). Override with
+# QDRANT_OCR__BACKEND=tesseract to fall back to Tesseract, which is also installed.
+
+# Common config shared by the web UI and CLI services (YAML anchor, not a service).
+x-app-base: &app-base
+  build:
+    context: .
+  image: black-onyx:1.0.0
+  depends_on:
+    - qdrant
+    - searxng
+  # Pass the host NVIDIA GPU (e.g. RTX 4060 Ti) into the container so
+  # torch/sentence-transformers/CLIP/llama.cpp can use CUDA when device=auto.
+  gpus: all
+  environment:
+    QDRANT_QDRANT__HOST: qdrant
+    QDRANT_QDRANT__PORT: "6333"
+    QDRANT_QDRANT__API_KEY: ${QDRANT_QDRANT__API_KEY:-}
+    QDRANT_OCR__BACKEND: ${QDRANT_OCR__BACKEND:-paddle}
+    BLACK_ONYX_AUTH_SECRET: ${BLACK_ONYX_AUTH_SECRET:?Set BLACK_ONYX_AUTH_SECRET}
+    QDRANT_SECURITY__PRODUCTION: "false"
+    QDRANT_SECURITY__SECURE_COOKIES: "false"
+    QDRANT_SECURITY__EXTERNAL_URL: ${QDRANT_SECURITY__EXTERNAL_URL:-http://127.0.0.1:8000}
+    NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
+    NVIDIA_DRIVER_CAPABILITIES: ${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}
+    # Explicit pass-through keeps Compose from silently dropping .env secrets.
+    OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY:-}
+    QDRANT_WEB_SEARCH__SEARXNG_URL: ${QDRANT_WEB_SEARCH__SEARXNG_URL:-http://searxng:8080}
+    # Detection-plane BFF upstreams (docker-compose.detection-core.yml / detection-apps)
+    BLACK_ONYX_INCIDENT_API_URL: ${BLACK_ONYX_INCIDENT_API_URL:-http://incident-api:8083}
+    BLACK_ONYX_ASSET_REGISTRY_URL: ${BLACK_ONYX_ASSET_REGISTRY_URL:-http://asset-registry:8081}
+    BLACK_ONYX_THREAT_INTEL_URL: ${BLACK_ONYX_THREAT_INTEL_URL:-http://threat-intel-service:8098}
+    BLACK_ONYX_INTEGRATION_HUB_URL: ${BLACK_ONYX_INTEGRATION_HUB_URL:-http://integration-hub:8105}
+    BLACK_ONYX_RESPONSE_URL: ${BLACK_ONYX_RESPONSE_URL:-http://response-orchestrator:8111}
+    BLACK_ONYX_NOTIFY_URL: ${BLACK_ONYX_NOTIFY_URL:-http://notification-service:8086}
+    BLACK_ONYX_TRAINING_URL: ${BLACK_ONYX_TRAINING_URL:-http://training-orchestrator:8096}
+    BLACK_ONYX_INGEST_URL: ${BLACK_ONYX_INGEST_URL:-http://ingestion-gateway:8080}
+    INCIDENT_API_SERVICE_KEY: ${INCIDENT_API_SERVICE_KEY:-dev-service-key}
+    THREAT_INTEL_SERVICE_KEY: ${THREAT_INTEL_SERVICE_API_KEY:-dev-threat-intel-key}
+    INTEGRATION_HUB_API_KEY: ${INTEGRATION_HUB_API_KEY:-dev-hub-key}
+    RESPONSE_API_KEY: ${RESPONSE_API_KEY:-dev-response-key}
+    API_KEYS: ${API_KEYS:-dev-ingest-key}
+  volumes:
+    - ./data:/app/data:ro
+    - ${BLACK_ONYX_MODEL_DIR:-./models}:/models:ro
+    - checkpoints_data:/app/.checkpoints
+    - paddleocr_cache:/app/.paddleocr
+    # Embedding/NER/CLIP weights download here on first use; keeping them in a
+    # volume avoids re-downloading several hundred MB on every recreate.
+    - model_cache:/app/.cache
+
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.15.0
+    # Only bind to localhost on the host — the web/cli services reach Qdrant
+    # over the internal Docker network via the `qdrant` hostname, so these
+    # ports are only for local inspection from the host, never the network.
+    # Override with QDRANT_HTTP_PORT / QDRANT_GRPC_PORT when 6333/6334 are taken.
+    ports:
+      - "127.0.0.1:${QDRANT_HTTP_PORT:-6333}:6333"
+      - "127.0.0.1:${QDRANT_GRPC_PORT:-6334}:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/127.0.0.1/6333"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  web:
+    <<: *app-base
+    # Bind only to localhost on the host so the UI is not reachable from the
+    # network/internet. The container still listens on 0.0.0.0 *inside* its own
+    # network namespace (required for Docker port forwarding to work); that is
+    # isolated and not the same as exposing on the host's 0.0.0.0.
+    # Override with BLACK_ONYX_PORT when 8000 is already in use.
+    ports:
+      - "127.0.0.1:${BLACK_ONYX_PORT:-8000}:8000"
+    restart: unless-stopped
+    command: ["black-onyx-web", "--host", "0.0.0.0", "--port", "8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  searxng:
+    image: searxng/searxng:latest
+    ports:
+      - "127.0.0.1:${SEARXNG_PORT:-18088}:8080"
+    volumes:
+      - ./deploy/searxng:/etc/searxng:ro
+    restart: unless-stopped
+    environment:
+      SEARXNG_BASE_URL: http://127.0.0.1:${SEARXNG_PORT:-18088}/
+      # SearXNG refuses to start without a secret. The fallback keeps local
+      # development working; set SEARXNG_SECRET in .env for real deployments.
+      SEARXNG_SECRET: ${SEARXNG_SECRET:-blackonyx-local-development-only}
+
+  # CLI runner — does not auto-start. Use `docker-compose run --rm cli <args>`.
+  # Examples:
+  #   docker-compose run --rm cli ingest --directory /app/data --collection all-knowledge
+  #   docker-compose run --rm cli search --query "bitcoin addresses" --collection all-knowledge --limit 10
+  #   docker-compose run --rm cli collections list
+  #   docker-compose run --rm cli info
+  cli:
+    <<: *app-base
+    profiles: ["cli"]
+    # Default entrypoint is the black-onyx CLI; args are appended by `run`.
+    entrypoint: ["black-onyx"]
+
+volumes:
+  # Keep the historical defenderchat_* volume names so rebuilds/renames do not
+  # orphan multi-GB model and Qdrant data onto empty blackonyx_* volumes.
+  qdrant_data:
+    name: defenderchat_qdrant_data
+  checkpoints_data:
+    name: defenderchat_checkpoints_data
+  paddleocr_cache:
+    name: defenderchat_paddleocr_cache
+  model_cache:
+    name: defenderchat_model_cache

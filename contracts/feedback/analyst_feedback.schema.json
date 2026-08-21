@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/schemas/analyst_feedback.json",
+  "title": "AnalystFeedback",
+  "description": "Tenant-scoped calibration feedback retained without triggering immediate retraining.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "feedback_id",
+    "tenant_id",
+    "incident_id",
+    "label",
+    "actor",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "feedback_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "tenant_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "incident_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "finding_id": {
+      "type": ["string", "null"],
+      "maxLength": 128
+    },
+    "label": {
+      "enum": [
+        "true_positive",
+        "false_positive",
+        "benign",
+        "needs_review",
+        "missed_detection"
+      ]
+    },
+    "note": {
+      "type": ["string", "null"],
+      "maxLength": 8000
+    },
+    "actor": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

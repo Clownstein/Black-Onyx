@@ -1,0 +1,27 @@
+# Lab-only: re-open demo/service keys and optional OIDC-off for local RBAC experiments.
+# Do NOT use on shared or production hosts.
+#
+#   $env:BLACK_ONYX_AUTH_SECRET = "lab-only-not-for-production"
+#   $env:API_KEYS = "dev-ingest-key"   # or rely on overlay default below
+#   docker compose -f docker-compose.yml -f docker-compose.platform.yml `
+#     -f docker-compose.detection-apps.yml -f docker-compose.detection-lab-dev.yml up -d --build
+#
+# Without this overlay, ALLOW_DEMO_KEYS defaults to false, OIDC stays required
+# (OIDC_DISABLED=false), and API_KEYS must be set explicitly. Join after detection-core or detection-apps.
+
+services:
+  incident-api:
+    environment:
+      ALLOW_DEMO_KEYS: "true"
+      # Optional: set OIDC_DISABLED=true in the shell to allow X-Role header spoofing for local RBAC tests.
+      OIDC_DISABLED: ${OIDC_DISABLED:-false}
+      OIDC_HS_SECRET: ${BLACK_ONYX_AUTH_SECRET:-lab-dev-only-not-for-production}
+
+  asset-registry:
+    environment:
+      OIDC_DISABLED: ${OIDC_DISABLED:-false}
+      OIDC_HS_SECRET: ${BLACK_ONYX_AUTH_SECRET:-lab-dev-only-not-for-production}
+
+  ingestion-gateway:
+    environment:
+      API_KEYS: ${API_KEYS:-dev-ingest-key}

@@ -1,0 +1,13 @@
+{
+  "tenant_id": "tenant-demo",
+  "incident_id": "inc-1",
+  "title": "Multi-host lateral movement",
+  "severity": "high",
+  "status": "open",
+  "summary_text": "Correlated log and network findings",
+  "mitre_techniques": ["T1021"],
+  "occurred_at": "2026-07-27T15:00:00Z",
+  "occurred_at_ts": 1753628400,
+  "embed_model": "cisco-ai/SecureBERT2.0-biencoder",
+  "embed_version": "securebert2.0-biencoder"
+}

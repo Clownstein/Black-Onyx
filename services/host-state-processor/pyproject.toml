@@ -1,0 +1,33 @@
+[project]
+name = "host-state-processor"
+version = "0.1.0"
+description = "Normalize host-state.raw events, run deterministic rules, publish host-state.features and findings.host-state"
+requires-python = ">=3.12"
+dependencies = [
+  "black-onyx-contracts",
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "pydantic-settings>=2.6",
+  "kafka-python>=2.0.2",
+  "python-ulid>=3.0",
+  "httpx>=0.27",
+]
+
+[tool.uv.sources]
+black-onyx-contracts = { path = "../../packages/black_onyx_contracts" }
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+host-state-processor = "host_state_processor.main:run"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["host_state_processor"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

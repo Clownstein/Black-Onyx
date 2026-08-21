@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: code-processor
+  namespace: {{ .Values.namespaces.processing }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: code-processor
+spec:
+  replicas: {{ .Values.codeProcessor.replicaCount }}
+  selector:
+    matchLabels:
+      app: code-processor
+  template:
+    metadata:
+      labels:
+        app: code-processor
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: code-processor
+          image: {{ .Values.codeProcessor.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.codeProcessor.service.port }}
+          env:
+            - name: CODE_PROCESSOR_SEMGREP_ENABLED
+              value: {{ .Values.codeProcessor.semgrepEnabled | quote }}
+            - name: CODE_PROCESSOR_CODEQL_ENABLED
+              value: {{ .Values.codeProcessor.codeqlEnabled | quote }}
+            - name: CODE_PROCESSOR_CODEQL_RAM_MB
+              value: {{ .Values.codeProcessor.codeqlRamMb | quote }}
+          volumeMounts:
+            - name: scanner-tmp
+              mountPath: /tmp
+          resources:
+            {{- toYaml .Values.codeProcessor.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem }}
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.codeProcessor.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.codeProcessor.service.port }}
+      volumes:
+        - name: scanner-tmp
+          emptyDir:
+            sizeLimit: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: code-processor
+  namespace: {{ .Values.namespaces.processing }}
+spec:
+  selector:
+    app: code-processor
+  ports:
+    - port: {{ .Values.codeProcessor.service.port }}
+      targetPort: {{ .Values.codeProcessor.service.port }}
+{{- if .Values.podDisruptionBudget.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: code-processor
+  namespace: {{ .Values.namespaces.processing }}
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      app: code-processor
+{{- end }}
+{{- if .Values.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: code-processor
+  namespace: {{ .Values.namespaces.processing }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: code-processor
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}

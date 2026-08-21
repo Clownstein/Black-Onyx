@@ -1,0 +1,110 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: asset-registry
+  namespace: {{ .Values.namespaces.application }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: asset-registry
+spec:
+  replicas: {{ .Values.assetRegistry.replicaCount }}
+  selector:
+    matchLabels:
+      app: asset-registry
+  template:
+    metadata:
+      labels:
+        app: asset-registry
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: asset-registry
+          image: {{ .Values.assetRegistry.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.assetRegistry.service.port }}
+          env:
+            - name: OIDC_DISABLED
+              value: {{ .Values.security.oidcDisabled | quote }}
+            - name: OIDC_ISSUER
+              value: {{ .Values.oidc.issuer | default "" | quote }}
+            - name: OIDC_AUDIENCE
+              value: {{ .Values.oidc.audience | default "" | quote }}
+            - name: OIDC_JWKS_URL
+              value: {{ .Values.oidc.jwksUrl | default "" | quote }}
+            - name: OIDC_HS_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: black-onyx-detection-secrets
+                  key: oidcHsSecret
+                  optional: {{ .Values.security.oidcDisabled }}
+            - name: ASSET_REGISTRY_SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: black-onyx-detection-secrets
+                  key: assetRegistryServiceKey
+                  optional: {{ .Values.security.allowDemoKeys }}
+          resources:
+            {{- toYaml .Values.assetRegistry.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem }}
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.assetRegistry.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.assetRegistry.service.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: asset-registry
+  namespace: {{ .Values.namespaces.application }}
+spec:
+  selector:
+    app: asset-registry
+  ports:
+    - port: {{ .Values.assetRegistry.service.port }}
+      targetPort: {{ .Values.assetRegistry.service.port }}
+{{- if .Values.podDisruptionBudget.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: asset-registry
+  namespace: {{ .Values.namespaces.application }}
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      app: asset-registry
+{{- end }}
+{{- if .Values.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: asset-registry
+  namespace: {{ .Values.namespaces.application }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: asset-registry
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}

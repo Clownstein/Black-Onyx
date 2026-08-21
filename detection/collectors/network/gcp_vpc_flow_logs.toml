@@ -1,0 +1,49 @@
+# Vector profile: ship GCP VPC Flow Logs (Cloud Logging -> Pub/Sub) to Black
+# Onyx ingestion-gateway.
+# Usage: vector --config detection/collectors/network/gcp_vpc_flow_logs.toml
+#
+# Setup: enable VPC Flow Logs on the subnet, create a Cloud Logging sink that
+# routes compute.googleapis.com/vpc_flows entries to a Pub/Sub topic, and
+# create a pull subscription for Vector's native gcp_pubsub source.
+#
+# Parsing is intentionally minimal here: this profile ships each LogEntry
+# mostly unparsed under payload.log_entry. The actual field parsing (and its
+# test coverage) lives in flow_processor/gcp_flow_adapter.py, mirroring how
+# zeek/dns raw payloads are parsed processor-side rather than in Vector.
+#
+# NOTE: ingestion-gateway requires Crockford ULID event_id. Install a ULID
+# generator transform or preprocess; static lab IDs below are placeholders.
+
+[sources.gcp_vpc_flow_logs]
+type = "gcp_pubsub"
+project = "${AA_GCP_PROJECT_ID}"
+subscription = "${AA_GCP_FLOWLOGS_SUBSCRIPTION}"
+
+[transforms.gcp_flow_envelope]
+type = "remap"
+inputs = ["gcp_vpc_flow_logs"]
+source = '''
+entry = parse_json!(to_string!(.message))
+. = {}
+.schema_version = "1.0"
+.event_id = get_env_var("AA_EVENT_ID_OVERRIDE") ?? "01HXGCPFLOW00000000000000"
+.event_type = "gcp.vpc_flow_log"
+.tenant_id = get_env_var!("AA_TENANT_ID")
+.occurred_at = format_timestamp!(now(), format: "%+")
+.ingested_at = .occurred_at
+.source.collector_id = get_env_var!("AA_COLLECTOR_ID")
+.source.source_type = "gcp_vpc_flow_logs"
+.asset.asset_id = get_env_var!("AA_ASSET_ID")
+.payload.event_type = "gcp.vpc_flow_log"
+.payload.log_entry = entry
+.payload.asset_id = get_env_var!("AA_ASSET_ID")
+'''
+
+[sinks.gateway_gcp_flow]
+type = "http"
+inputs = ["gcp_flow_envelope"]
+uri = "${AA_GATEWAY_URL:-http://127.0.0.1:8080}/api/v1/ingest/network-flows"
+method = "post"
+encoding.codec = "json"
+request.headers.X-API-Key = "${AA_INGEST_KEY}"
+request.headers.X-Tenant-Id = "${AA_TENANT_ID}"

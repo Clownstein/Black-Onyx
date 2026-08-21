@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: host-state-model
+  namespace: {{ .Values.namespaces.models }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: host-state-model
+spec:
+  replicas: {{ .Values.hostStateModel.replicaCount }}
+  selector:
+    matchLabels:
+      app: host-state-model
+  template:
+    metadata:
+      labels:
+        app: host-state-model
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: host-state-model
+          image: {{ .Values.hostStateModel.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.hostStateModel.service.port }}
+          resources:
+            {{- toYaml .Values.hostStateModel.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.hostStateModel.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.hostStateModel.service.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: host-state-model
+  namespace: {{ .Values.namespaces.models }}
+spec:
+  selector:
+    app: host-state-model
+  ports:
+    - port: {{ .Values.hostStateModel.service.port }}
+      targetPort: {{ .Values.hostStateModel.service.port }}

@@ -1,0 +1,14 @@
+{
+  "event_type": "zeek.dns",
+  "uid": "CDnsUid0001",
+  "ts": 1720000001.5,
+  "query": "cdn.example.com",
+  "qtype_name": "A",
+  "rcode_name": "NOERROR",
+  "answers": ["203.0.113.10"],
+  "id_orig_h_hash": "sha256:cccccccccccccccccccccccccccccccc",
+  "sensor_id": "sensor-edge-01",
+  "asset_id": "host-web-01",
+  "query_length": 15,
+  "entropy": 2.8
+}

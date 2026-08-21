@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: code-model
+  namespace: {{ .Values.namespaces.models }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: code-model
+spec:
+  replicas: {{ .Values.codeModel.replicaCount }}
+  selector:
+    matchLabels:
+      app: code-model
+  template:
+    metadata:
+      labels:
+        app: code-model
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: code-model
+          image: {{ .Values.codeModel.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.codeModel.service.port }}
+          {{- if .Values.codeModel.artifactClaimName }}
+          volumeMounts:
+            - name: model-artifacts
+              mountPath: /app/artifacts
+              readOnly: true
+          {{- end }}
+          resources:
+            {{- toYaml .Values.codeModel.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.codeModel.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.codeModel.service.port }}
+      {{- if .Values.codeModel.artifactClaimName }}
+      volumes:
+        - name: model-artifacts
+          persistentVolumeClaim:
+            claimName: {{ .Values.codeModel.artifactClaimName | quote }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: code-model
+  namespace: {{ .Values.namespaces.models }}
+spec:
+  selector:
+    app: code-model
+  ports:
+    - port: {{ .Values.codeModel.service.port }}
+      targetPort: {{ .Values.codeModel.service.port }}

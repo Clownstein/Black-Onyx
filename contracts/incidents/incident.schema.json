@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/schemas/incident.json",
+  "title": "Incident",
+  "description": "Correlated incident (ANOMALY_DETECTION_PLATFORM.md §10.8).",
+  "type": "object",
+  "required": [
+    "incident_id",
+    "tenant_id",
+    "title",
+    "status",
+    "severity",
+    "risk_score",
+    "first_seen",
+    "last_seen"
+  ],
+  "properties": {
+    "incident_id": { "type": "string", "minLength": 1 },
+    "tenant_id": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["open", "acknowledged", "investigating", "resolved", "closed", "suppressed"]
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"]
+    },
+    "risk_score": { "type": "number", "minimum": 0, "maximum": 1 },
+    "category": { "type": "array", "items": { "type": "string" } },
+    "first_seen": { "type": "string", "format": "date-time" },
+    "last_seen": { "type": "string", "format": "date-time" },
+    "assets": { "type": "array", "items": { "type": "string" } },
+    "services": { "type": "array", "items": { "type": "string" } },
+    "deployment_id": { "type": ["string", "null"] },
+    "commit": { "type": ["string", "null"] },
+    "finding_ids": { "type": "array", "items": { "type": "string" } },
+    "summary": { "type": ["string", "null"] },
+    "evidence": { "type": "array", "items": { "type": "object" } },
+    "assigned_to": { "type": ["string", "null"] },
+    "disposition": { "type": ["string", "null"] },
+    "models": { "type": "array", "items": { "type": "string" } },
+    "site_id": { "type": ["string", "null"] },
+    "mitre_tactics": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "mitre_techniques": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "mitre_confidence": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "threat_intel": {
+      "type": "object",
+      "properties": {
+        "matched_indicators": { "type": "array", "items": { "type": "object" } },
+        "campaigns": { "type": "array", "items": { "type": "string" } },
+        "tlp": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "external_links": {
+      "type": "object",
+      "properties": {
+        "thehive_case_id": { "type": ["string", "null"] },
+        "grafana_explore_url": { "type": ["string", "null"] },
+        "shuffle_workflow_id": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

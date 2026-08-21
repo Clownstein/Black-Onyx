@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/schemas/network_flow.json",
+  "title": "NetworkFlow",
+  "description": "Network flow sample (ANOMALY_DETECTION_PLATFORM.md §5.5).",
+  "type": "object",
+  "required": ["event_type", "flow_id", "protocol", "source", "destination"],
+  "properties": {
+    "event_type": { "const": "network.flow" },
+    "sensor_id": { "type": "string" },
+    "flow_id": { "type": "string", "minLength": 1 },
+    "source": {
+      "type": "object",
+      "properties": {
+        "asset_id": { "type": "string" },
+        "ip_hash": { "type": "string" },
+        "zone": { "type": "string" },
+        "port": { "type": "integer" }
+      },
+      "additionalProperties": true
+    },
+    "destination": {
+      "type": "object",
+      "properties": {
+        "asset_id": { "type": "string" },
+        "ip_hash": { "type": "string" },
+        "zone": { "type": "string" },
+        "port": { "type": "integer" },
+        "country": { "type": ["string", "null"] },
+        "asn": { "type": ["integer", "string", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "protocol": { "type": "string", "minLength": 1 },
+    "service": { "type": ["string", "null"] },
+    "duration_ms": { "type": ["number", "null"] },
+    "bytes_out": { "type": ["integer", "null"] },
+    "bytes_in": { "type": ["integer", "null"] },
+    "packets_out": { "type": ["integer", "null"] },
+    "packets_in": { "type": ["integer", "null"] },
+    "connection_state": { "type": ["string", "null"] },
+    "tls": {
+      "type": ["object", "null"],
+      "properties": {
+        "sni": { "type": ["string", "null"] },
+        "ja3": { "type": ["string", "null"] },
+        "ja3s": { "type": ["string", "null"] },
+        "ja4": { "type": ["string", "null"] },
+        "version": { "type": ["string", "null"] },
+        "cipher": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "dns": {
+      "type": ["object", "null"],
+      "properties": {
+        "query": { "type": ["string", "null"] },
+        "qtype": { "type": ["string", "null"] },
+        "rcode": { "type": ["string", "null"] },
+        "answers": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "query_length": { "type": ["integer", "null"] },
+        "entropy": { "type": ["number", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "zeek_uid": { "type": ["string", "null"] },
+    "community_id": { "type": ["string", "null"] }
+  },
+  "additionalProperties": true
+}
