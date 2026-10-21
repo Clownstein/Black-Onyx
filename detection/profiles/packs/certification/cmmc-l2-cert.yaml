@@ -1,0 +1,16 @@
+pack_id: cmmc-l2-cert
+kind: certification
+version: "1.0"
+title: CMMC Level 2 practice crosswalk
+description: Evidence assistance for CMMC L2 (not a certification decision).
+checks:
+  - check_id: cmmc.ac.l2-3.1.1
+    title: Limit system access
+    surfaces: [identity]
+    automation: hybrid
+    severity_default: high
+  - check_id: cmmc.si.l2-3.14.1
+    title: Identify and correct flaws
+    surfaces: [code, host]
+    automation: auto
+    severity_default: high

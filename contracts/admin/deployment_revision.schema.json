@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/schemas/deployment_revision.json",
+  "title": "DeploymentRevision",
+  "description": "Black Onyx deployment-controller revision as returned by /api/v1/admin/deployments. Secret values never appear; previews mask them.",
+  "type": "object",
+  "required": [
+    "revision_id",
+    "target",
+    "status",
+    "changed_keys",
+    "rendered_preview",
+    "preview_digest",
+    "created_by",
+    "created_at"
+  ],
+  "properties": {
+    "revision_id": {
+      "type": "string",
+      "pattern": "^rev-[0-9]{14}-[0-9a-f]{8}$"
+    },
+    "target": {
+      "enum": [
+        "compose",
+        "helm"
+      ]
+    },
+    "parent_revision_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "approved",
+        "applying",
+        "active",
+        "failed",
+        "rolled_back",
+        "superseded",
+        "rejected"
+      ]
+    },
+    "changed_keys": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(env|values)\\."
+      }
+    },
+    "rendered_preview": {
+      "type": "string"
+    },
+    "preview_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "exception_expires_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "created_by": {
+      "type": "string"
+    },
+    "approved_by": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "applied_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "health": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "error": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+pack_id: soc2-tsc
+kind: certification
+version: "1.0"
+title: SOC 2 Trust Services Criteria crosswalk
+description: Evidence mapping assistance for SOC 2 (not a certificate).
+checks:
+  - check_id: soc2.cc6.1
+    title: Logical access security
+    surfaces: [identity, host]
+    automation: hybrid
+    severity_default: high
+    evidence_types: [detector_hit, attestation]
+  - check_id: soc2.cc7.2
+    title: System monitoring
+    surfaces: [network, host]
+    automation: auto
+    severity_default: high
+    evidence_types: [detector_hit]
+  - check_id: soc2.cc8.1
+    title: Change management
+    surfaces: [code]
+    automation: hybrid
+    severity_default: medium

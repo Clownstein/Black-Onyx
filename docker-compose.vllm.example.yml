@@ -1,0 +1,44 @@
+# Example: serve Black Onyx 5B with vLLM (operator GPU host).
+# Usage:
+#   docker compose -f docker-compose.vllm.example.yml up -d
+# Then point TIP at it via config.black-onyx-5b.example.yaml:
+#   llm.openai_compatible.base_url: http://127.0.0.1:8000/v1
+#
+# Verify:
+#   uv run python scripts/verify_black_onyx_5b.py --vllm-url http://127.0.0.1:8000/v1
+
+services:
+  black-onyx-5b:
+    # Same default as docker-compose.security-tools.yml, which already pins
+    # this tag. A :latest default here meant the two files could serve
+    # different vLLM builds from one VLLM_IMAGE variable.
+    image: ${VLLM_IMAGE:-vllm/vllm-openai:v0.10.2}
+    container_name: blackonyx-vllm-5b
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      # Mount HF cache or local weights directory
+      - ${BLACK_ONYX_5B_WEIGHTS:-./models/black-onyx-5b}:/models/black-onyx-5b:ro
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN:-}
+    gpus: all
+    command:
+      - --model
+      - /models/black-onyx-5b
+      - --served-model-name
+      - black-onyx-5b
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --enable-auto-tool-choice
+      - --tool-call-parser
+      - gemma4
+      - --max-model-len
+      - "32768"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/v1/models"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s

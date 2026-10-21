@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: correlation-engine
+  namespace: {{ .Values.namespaces.processing }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: correlation-engine
+spec:
+  replicas: {{ .Values.correlationEngine.replicaCount }}
+  selector:
+    matchLabels:
+      app: correlation-engine
+  template:
+    metadata:
+      labels:
+        app: correlation-engine
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: correlation-engine
+          image: {{ .Values.correlationEngine.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.correlationEngine.service.port }}
+          env:
+            - name: CORRELATION_PORT
+              value: {{ .Values.correlationEngine.service.port | quote }}
+            - name: CORRELATION_ASSET_REGISTRY_URL
+              value: "http://asset-registry.{{ .Values.namespaces.application }}.svc.cluster.local:{{ .Values.assetRegistry.service.port }}"
+            - name: CORRELATION_ASSET_REGISTRY_REQUIRED
+              value: {{ .Values.correlationEngine.assetRegistryRequired | quote }}
+            - name: CORRELATION_ASSET_REGISTRY_SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: assetRegistryServiceKey
+            - name: CORRELATION_KAFKA_BROKERS
+              value: {{ required "externalDependencies.kafkaBrokers is required" .Values.externalDependencies.kafkaBrokers | quote }}
+            - name: CORRELATION_INCIDENT_API_URL
+              value: "http://incident-api.{{ .Values.namespaces.application }}.svc.cluster.local:{{ .Values.incidentApi.service.port }}"
+            - name: CORRELATION_NOTIFICATION_URL
+              value: "http://notification-service.{{ .Values.namespaces.application }}.svc.cluster.local:{{ .Values.notificationService.service.port }}/api/v1/notifications/incident"
+            - name: CORRELATION_REDIS_URL
+              value: {{ required "externalDependencies.redisUrl is required" .Values.externalDependencies.redisUrl | quote }}
+            - name: CORRELATION_FINDING_TOPICS
+              value: {{ .Values.correlationEngine.findingTopics | quote }}
+            - name: CORRELATION_THREAT_INTEL_URL
+              value: {{ .Values.correlationEngine.threatIntelUrl | default (printf "http://threat-intel-service.%s.svc.cluster.local:%v" .Values.namespaces.application .Values.threatIntelService.service.port) | quote }}
+            - name: CORRELATION_VECTOR_SEARCH_ENABLED
+              value: {{ .Values.correlationEngine.vectorSearchEnabled | default "false" | quote }}
+            - name: CORRELATION_QDRANT_URL
+              value: {{ required "externalDependencies.qdrantUrl is required" .Values.externalDependencies.qdrantUrl | quote }}
+            - name: CORRELATION_EMBEDDING_SERVICE_URL
+              value: {{ .Values.correlationEngine.embeddingServiceUrl | default (printf "http://embedding-worker.%s.svc.cluster.local:%v" .Values.namespaces.processing .Values.embeddingWorker.service.port) | quote }}
+            - name: CORRELATION_EMBEDDING_SERVICE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: embeddingApiKey
+            - name: CORRELATION_INCIDENT_API_SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: incidentApiServiceKey
+            - name: CORRELATION_NOTIFICATION_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: notificationApiKey
+            - name: CORRELATION_THREAT_INTEL_SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: threatIntelServiceKey
+          resources:
+            {{- toYaml .Values.correlationEngine.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.correlationEngine.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.correlationEngine.service.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: correlation-engine
+  namespace: {{ .Values.namespaces.processing }}
+spec:
+  selector:
+    app: correlation-engine
+  ports:
+    - port: {{ .Values.correlationEngine.service.port }}
+      targetPort: {{ .Values.correlationEngine.service.port }}

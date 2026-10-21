@@ -1,0 +1,100 @@
+pack_id: pci-dss-4
+kind: framework
+version: '4.0'
+title: PCI DSS v4.0
+extends_surfaces:
+- network
+- host
+- webapp
+- identity
+checks:
+- check_id: pci.1.cde-segmentation
+  title: CDE segmented with deny-by-default
+  surfaces:
+  - network
+  automation: auto
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - cross_zone_flow
+- check_id: pci.2.no-defaults
+  title: No vendor default passwords
+  surfaces:
+  - host
+  - network
+  automation: hybrid
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+- check_id: pci.3.no-sad
+  title: No storage of sensitive auth data after auth
+  surfaces:
+  - webapp
+  - host
+  automation: hybrid
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+  bindings:
+    scanners:
+    - pci-dss
+- check_id: pci.4.tls-chd
+  title: Strong crypto for CHD in transit
+  surfaces:
+  - webapp
+  - network
+  automation: auto
+  severity_default: critical
+  evidence_types:
+  - probe
+  bindings:
+    detectors:
+    - tls_probe_weak
+- check_id: pci.8.mfa-cde
+  title: MFA for all CDE access
+  surfaces:
+  - identity
+  automation: auto
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+  mitre_techniques:
+  - T1110
+- check_id: pci.10.logging
+  title: Audit logs for CDE access
+  surfaces:
+  - host
+  - identity
+  - network
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - log_source_silent
+- check_id: pci.11.scans
+  title: ASV and internal vuln scans
+  surfaces:
+  - webapp
+  - host
+  automation: hybrid
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - vuln_ingest
+- check_id: pci.6.payment-scripts
+  title: Payment page script integrity
+  surfaces:
+  - webapp
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    scanners:
+    - pci-dss

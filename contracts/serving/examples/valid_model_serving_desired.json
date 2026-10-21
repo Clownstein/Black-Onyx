@@ -1,0 +1,12 @@
+{
+  "tenant_id": "tenant-acme",
+  "model_name": "log-model",
+  "aliases": {
+    "champion": {
+      "version": "1.0.3",
+      "signature": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "generation": 4,
+      "removed": false
+    }
+  }
+}

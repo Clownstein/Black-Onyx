@@ -1,0 +1,27 @@
+# Generic OpenTelemetry SDK file-config sketch for app auto-instrumentation agents.
+# Point your language agent at the collector from docker-compose.otel.yml.
+#
+# Python: prefer `from black_onyx_otel import setup_tracing` inside platform services.
+# External apps may use opentelemetry-instrument with these env vars instead.
+
+file_format: "0.3"
+resource:
+  attributes:
+    - name: service.namespace
+      value: black-onyx-detection
+    - name: deployment.environment
+      value: ${DEPLOYMENT_ENVIRONMENT:-dev}
+
+tracer_provider:
+  processors:
+    - batch:
+        exporter:
+          otlp_http:
+            endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}/v1/traces
+
+meter_provider:
+  readers:
+    - periodic:
+        exporter:
+          otlp_http:
+            endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}/v1/metrics

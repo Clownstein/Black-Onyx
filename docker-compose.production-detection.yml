@@ -1,0 +1,16 @@
+# Production egress for detection apps. Layer after docker-compose.production.yml
+# and docker-compose.detection-apps.yml:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.platform.yml #     -f docker-compose.detection-apps.yml -f docker-compose.production.yml #     -f docker-compose.production-detection.yml up -d
+#
+# docker-compose.production.yml makes the default network internal, so only
+# the services below (each with a real outbound dependency) can leave the host.
+services:
+  threat-intel-service:   # KEV / TAXII / MISP feeds
+    networks: [default, egress]
+  integration-hub:        # TheHive, SIEM export, IdP/HR sync
+    networks: [default, egress]
+  notification-service:   # SMTP and webhooks
+    networks: [default, egress]
+  notification-outbox-worker:
+    networks: [default, egress]

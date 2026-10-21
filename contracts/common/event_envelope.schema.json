@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/contracts/common/event_envelope.schema.json",
+  "title": "CommonEventEnvelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "event_type",
+    "tenant_id",
+    "occurred_at",
+    "ingested_at",
+    "source",
+    "asset"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$",
+      "description": "Major.minor envelope schema version"
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "ULID (Crockford base32)"
+    },
+    "event_type": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9_.-]*$"
+    },
+    "tenant_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "site_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Optional deployment site / region federation key"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ingested_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["collector_id", "source_type"],
+      "properties": {
+        "collector_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "source_type": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asset_id"],
+      "properties": {
+        "asset_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "service_id": { "type": "string", "maxLength": 256 },
+        "environment": { "type": "string", "maxLength": 128 },
+        "region": { "type": "string", "maxLength": 128 }
+      }
+    },
+    "trace": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "trace_id": { "type": "string", "maxLength": 128 },
+        "span_id": { "type": "string", "maxLength": 128 }
+      }
+    },
+    "labels": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "maxLength": 512 },
+      "propertyNames": { "maxLength": 128 }
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Vendor-specific fields preserved without breaking the envelope"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+# Skip image alembic (DB already at 0004) and use the running Qdrant proxy.
+services:
+  web:
+    gpus: !reset null
+    depends_on: !reset []
+    command: ["/app/.venv/bin/black-onyx-web", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      QDRANT_QDRANT__HOST: qdrant-upstream
+    volumes:
+      - ./src:/app/src
+      - ./web/dist:/app/web/dist

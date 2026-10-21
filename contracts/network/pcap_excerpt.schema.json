@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/schemas/pcap_excerpt.json",
+  "title": "PcapExcerpt",
+  "description": "Metadata for a selectively captured PCAP excerpt stored in object storage.",
+  "type": "object",
+  "required": ["event_type", "excerpt_id", "sha256", "uri", "reason"],
+  "properties": {
+    "event_type": { "const": "pcap.excerpt" },
+    "excerpt_id": { "type": "string", "minLength": 1 },
+    "sha256": { "type": "string", "minLength": 64, "maxLength": 64 },
+    "uri": { "type": "string", "minLength": 1 },
+    "reason": { "type": "string", "minLength": 1 },
+    "bytes": { "type": ["integer", "null"], "minimum": 0 },
+    "ttl_days": { "type": ["integer", "null"], "minimum": 1 },
+    "sensor_id": { "type": ["string", "null"] },
+    "asset_id": { "type": ["string", "null"] },
+    "community_id": { "type": ["string", "null"] },
+    "zeek_uid": { "type": ["string", "null"] },
+    "related_finding_ids": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "related_alert_sids": {
+      "type": "array",
+      "items": { "type": "integer" }
+    },
+    "captured_at": { "type": ["string", "null"] }
+  },
+  "additionalProperties": true
+}

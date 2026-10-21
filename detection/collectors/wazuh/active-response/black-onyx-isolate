@@ -1,0 +1,189 @@
+#!/bin/bash
+# Wazuh active response (Linux): isolate this host for Black Onyx playbooks.
+#
+# Install on agents as /var/ossec/active-response/bin/black-onyx-isolate
+# (root:wazuh, 0750). Dispatched by the Black Onyx isolate-host playbook through
+# PUT /active-response with command "!black-onyx-isolate" and extra_args:
+#   ttl_minutes=<n>  reason=<text>  allow=<ip|cidr> (repeatable)
+# The Wazuh manager from ossec.conf is always allowed so the agent stays managed.
+# IPv4 and IPv6 (when ip6tables exists) are blocked on INPUT, OUTPUT and FORWARD,
+# so containers on the host are isolated too. Rules and the restore timer do not
+# survive a reboot: a rebooted host comes back un-isolated.
+#
+# Manual restore: /var/ossec/active-response/bin/black-onyx-isolate restore
+set -uo pipefail
+set -f
+
+CHAIN="BLACK_ONYX_ISOLATE"
+UNIT="black-onyx-unisolate"
+WAZUH_DIR="${WAZUH_DIR:-/var/ossec}"
+LOG="$WAZUH_DIR/logs/active-responses.log"
+OSSEC_CONF="$WAZUH_DIR/etc/ossec.conf"
+SELF="$WAZUH_DIR/active-response/bin/black-onyx-isolate"
+PIDFILE="$WAZUH_DIR/var/run/black-onyx-unisolate.pid"
+IPV4_RE='^([0-9]{1,3}\.){3}[0-9]{1,3}(/[0-9]{1,2})?$'
+IPV6_RE='^[0-9A-Fa-f]*:[0-9A-Fa-f:.]*(/[0-9]{1,3})?$'
+
+log() {
+  printf '%s black-onyx-isolate: %s\n' "$(date '+%Y/%m/%d %H:%M:%S')" "$*" >>"$LOG" 2>/dev/null || true
+}
+
+have() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+firewall_tables() {
+  have iptables && echo iptables
+  have ip6tables && echo ip6tables
+}
+
+restore() {
+  local table chain
+  for table in $(firewall_tables); do
+    for chain in INPUT OUTPUT FORWARD; do
+      while "$table" -w -C "$chain" -j "$CHAIN" 2>/dev/null; do
+        "$table" -w -D "$chain" -j "$CHAIN"
+      done
+    done
+    if "$table" -w -L "$CHAIN" -n >/dev/null 2>&1; then
+      "$table" -w -F "$CHAIN"
+      "$table" -w -X "$CHAIN"
+    fi
+  done
+  rm -f "$PIDFILE"
+}
+
+cancel_restore_timer() {
+  if have systemctl; then
+    systemctl stop "$UNIT.timer" "$UNIT.service" >/dev/null 2>&1 || true
+    systemctl reset-failed "$UNIT.timer" "$UNIT.service" >/dev/null 2>&1 || true
+  fi
+  if [ -f "$PIDFILE" ]; then
+    kill "$(cat "$PIDFILE")" 2>/dev/null || true
+    rm -f "$PIDFILE"
+  fi
+}
+
+# Any failure while applying rules leaves the host fully restored, never half-isolated.
+run() {
+  if ! "$@"; then
+    log "failed: $* ; restoring network access"
+    restore
+    exit 1
+  fi
+}
+
+if [ "${1:-}" = "restore" ]; then
+  restore
+  log "isolation removed"
+  exit 0
+fi
+
+have iptables || { log "iptables not found; isolation not applied"; exit 1; }
+
+INPUT_JSON=""
+IFS= read -r INPUT_JSON || true
+COMMAND=$(printf '%s' "$INPUT_JSON" | sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\([a-z]*\)".*/\1/p')
+EXTRA_ARGS=$(printf '%s' "$INPUT_JSON" \
+  | sed -n 's/.*"extra_args"[[:space:]]*:[[:space:]]*\[\([^]]*\)\].*/\1/p' \
+  | tr ',' '\n' | sed 's/^[[:space:]]*"//; s/"[[:space:]]*$//')
+
+if [ "$COMMAND" = "delete" ]; then
+  cancel_restore_timer
+  restore
+  log "isolation removed by delete command"
+  exit 0
+fi
+if [ "$COMMAND" != "add" ]; then
+  log "ignoring command '${COMMAND:-none}'"
+  exit 0
+fi
+
+TTL_MINUTES=120
+REASON=""
+ALLOW_V4=()
+ALLOW_V6=()
+
+add_peer() {
+  local peer="$1"
+  if [[ "$peer" =~ $IPV4_RE ]]; then
+    ALLOW_V4+=("$peer")
+  elif [[ "$peer" =~ $IPV6_RE ]]; then
+    ALLOW_V6+=("$peer")
+  else
+    return 1
+  fi
+}
+
+while IFS= read -r arg; do
+  case "$arg" in
+    ttl_minutes=*) TTL_MINUTES="${arg#ttl_minutes=}" ;;
+    reason=*) REASON="${arg#reason=}" ;;
+    allow=*)
+      if ! add_peer "${arg#allow=}"; then
+        log "ignoring allow entry that is not an IP address or CIDR"
+      fi
+      ;;
+  esac
+done <<<"$EXTRA_ARGS"
+if ! [[ "$TTL_MINUTES" =~ ^[0-9]+$ ]] || [ "$TTL_MINUTES" -lt 1 ] || [ "$TTL_MINUTES" -gt 10080 ]; then
+  TTL_MINUTES=120
+fi
+
+# Resolve every manager address before touching the firewall; if the manager
+# cannot be resolved, isolating would cut the agent off from Wazuh entirely.
+MANAGERS=$(sed -n 's/.*<address>[[:space:]]*\([A-Za-z0-9.:_-]*\)[[:space:]]*<\/address>.*/\1/p' "$OSSEC_CONF" 2>/dev/null || true)
+if [ -z "$MANAGERS" ]; then
+  log "no manager <address> found in $OSSEC_CONF; isolation not applied"
+  exit 1
+fi
+for manager in $MANAGERS; do
+  if add_peer "$manager"; then
+    continue
+  fi
+  resolved=$(getent ahosts "$manager" 2>/dev/null | awk '{print $1}' | sort -u)
+  if [ -z "$resolved" ]; then
+    log "cannot resolve manager address $manager; isolation not applied"
+    exit 1
+  fi
+  for address in $resolved; do
+    add_peer "$address" || true
+  done
+done
+
+cancel_restore_timer
+restore
+
+for table in $(firewall_tables); do
+  if [ "$table" = "iptables" ]; then
+    peers=("${ALLOW_V4[@]+"${ALLOW_V4[@]}"}")
+  else
+    peers=("${ALLOW_V6[@]+"${ALLOW_V6[@]}"}")
+  fi
+  run "$table" -w -N "$CHAIN"
+  run "$table" -w -A "$CHAIN" -i lo -j ACCEPT
+  run "$table" -w -A "$CHAIN" -o lo -j ACCEPT
+  if [ "$table" = "ip6tables" ]; then
+    # Neighbor discovery is required to reach allowed IPv6 peers on the link.
+    run "$table" -w -A "$CHAIN" -p ipv6-icmp -j ACCEPT
+  fi
+  for peer in "${peers[@]+"${peers[@]}"}"; do
+    run "$table" -w -A "$CHAIN" -s "$peer" -j ACCEPT
+    run "$table" -w -A "$CHAIN" -d "$peer" -j ACCEPT
+  done
+  run "$table" -w -A "$CHAIN" -j DROP
+  for chain in INPUT OUTPUT FORWARD; do
+    run "$table" -w -I "$chain" 1 -j "$CHAIN"
+  done
+done
+if ! have ip6tables && [ -d /proc/sys/net/ipv6 ]; then
+  log "warning: ip6tables not found; IPv6 traffic is not isolated"
+fi
+log "isolated for ${TTL_MINUTES}m (allow: ${ALLOW_V4[*]-} ${ALLOW_V6[*]-}) reason: ${REASON}"
+
+if have systemd-run && systemd-run --quiet --collect --unit="$UNIT" --on-active="${TTL_MINUTES}m" "$SELF" restore >/dev/null 2>&1; then
+  exit 0
+fi
+nohup sh -c "sleep $((TTL_MINUTES * 60)); '$SELF' restore" >/dev/null 2>&1 &
+echo $! >"$PIDFILE" 2>/dev/null || log "could not record restore timer pid; restore manually after ${TTL_MINUTES}m"
+exit 0

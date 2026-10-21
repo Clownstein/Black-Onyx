@@ -1,0 +1,9 @@
+{
+  "tenant_id": "tenant-demo",
+  "indicator_id": "ind-1",
+  "source": "cisa-kev",
+  "text": "Known exploited vulnerability narrative",
+  "occurred_at_ts": 1753628400,
+  "embed_model": "cisco-ai/SecureBERT2.0-biencoder",
+  "embed_version": "securebert2.0-biencoder"
+}

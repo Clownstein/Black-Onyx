@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/schemas/suricata_alert.json",
+  "title": "SuricataAlert",
+  "description": "Suricata EVE alert record for Black Onyx IDS ingest.",
+  "type": "object",
+  "required": ["event_type", "alert"],
+  "properties": {
+    "event_type": { "const": "suricata.alert" },
+    "timestamp": { "type": ["string", "null"] },
+    "flow_id": { "type": ["integer", "string", "null"] },
+    "community_id": { "type": ["string", "null"] },
+    "src_ip_hash": { "type": ["string", "null"] },
+    "dest_ip_hash": { "type": ["string", "null"] },
+    "src_port": { "type": ["integer", "null"] },
+    "dest_port": { "type": ["integer", "null"] },
+    "proto": { "type": ["string", "null"] },
+    "sensor_id": { "type": ["string", "null"] },
+    "asset_id": { "type": ["string", "null"] },
+    "alert": {
+      "type": "object",
+      "required": ["signature_id", "signature", "severity"],
+      "properties": {
+        "action": { "type": ["string", "null"] },
+        "gid": { "type": ["integer", "null"] },
+        "signature_id": { "type": "integer" },
+        "rev": { "type": ["integer", "null"] },
+        "signature": { "type": "string", "minLength": 1 },
+        "category": { "type": ["string", "null"] },
+        "severity": { "type": "integer", "minimum": 1, "maximum": 4 },
+        "metadata": { "type": ["object", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "mitre_tactics": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "mitre_techniques": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": true
+}

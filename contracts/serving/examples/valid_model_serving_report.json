@@ -1,0 +1,19 @@
+{
+  "instance_id": "log-model-7f9c-a1b2c3",
+  "slots": {
+    "champion": {
+      "version": "1.0.3",
+      "signature": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "generation": 4,
+      "loaded_at": "2026-09-27T18:00:00+00:00"
+    },
+    "canary": {
+      "version": null,
+      "signature": null,
+      "generation": 5
+    }
+  },
+  "errors": {
+    "canary": "1.0.4: Model package signature mismatch"
+  }
+}

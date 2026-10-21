@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/schemas/zeek_ssl.json",
+  "title": "ZeekSsl",
+  "description": "Normalized Zeek ssl.log / TLS metadata for Black Onyx ingest.",
+  "type": "object",
+  "required": ["event_type", "uid"],
+  "properties": {
+    "event_type": { "const": "zeek.ssl" },
+    "uid": { "type": "string", "minLength": 1 },
+    "ts": { "type": ["number", "string", "null"] },
+    "server_name": { "type": ["string", "null"] },
+    "ja3": { "type": ["string", "null"] },
+    "ja3s": { "type": ["string", "null"] },
+    "ja4": { "type": ["string", "null"] },
+    "version": { "type": ["string", "null"] },
+    "cipher": { "type": ["string", "null"] },
+    "id_orig_h_hash": { "type": ["string", "null"] },
+    "id_resp_h_hash": { "type": ["string", "null"] },
+    "sensor_id": { "type": ["string", "null"] },
+    "asset_id": { "type": ["string", "null"] }
+  },
+  "additionalProperties": true
+}

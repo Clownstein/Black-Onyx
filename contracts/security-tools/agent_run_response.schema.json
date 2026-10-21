@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/schemas/agent_run_response.json",
+  "title": "AgentRunResponse",
+  "description": "POST /v1/agent/run and /v1/agent/runs/{id}/resume. pending_approval runs carry run_id and the call to approve.",
+  "type": "object",
+  "required": [
+    "answer",
+    "rounds",
+    "status"
+  ],
+  "properties": {
+    "answer": {
+      "type": "string"
+    },
+    "rounds": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "status": {
+      "enum": [
+        "ok",
+        "pending_approval"
+      ]
+    },
+    "tool_calls": {
+      "type": "array"
+    },
+    "tool_results": {
+      "type": "array"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "pending_approval": {
+      "type": "object",
+      "required": [
+        "tool",
+        "arguments",
+        "session_id",
+        "timeout",
+        "preview_hash"
+      ],
+      "properties": {
+        "tool": {
+          "type": "string"
+        },
+        "call_id": {
+          "type": "string"
+        },
+        "arguments": {
+          "type": "object"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300
+        },
+        "network_profile": {
+          "enum": ["offline", "public", "lab"]
+        },
+        "destinations": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {"type": "string", "minLength": 1, "maxLength": 253}
+        },
+        "ports": {
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {"type": "integer", "minimum": 1, "maximum": 65535}
+        },
+        "resolved_targets": {
+          "type": "object"
+        },
+        "preview_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    }
+  },
+  "if": {
+    "properties": {
+      "status": {
+        "const": "pending_approval"
+      }
+    }
+  },
+  "then": {
+    "required": [
+      "run_id",
+      "pending_approval"
+    ]
+  }
+}

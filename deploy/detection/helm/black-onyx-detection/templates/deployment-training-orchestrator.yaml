@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: training-orchestrator
+  namespace: {{ .Values.namespaces.training }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: training-orchestrator
+spec:
+  replicas: {{ .Values.trainingOrchestrator.replicaCount }}
+  selector:
+    matchLabels:
+      app: training-orchestrator
+  template:
+    metadata:
+      labels:
+        app: training-orchestrator
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: training-orchestrator
+          image: {{ .Values.trainingOrchestrator.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.trainingOrchestrator.service.port }}
+          env:
+            - name: TRAINING_ORCHESTRATOR_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "secrets.name is required" .Values.secrets.name }}
+                  key: {{ required "training database secret key is required" .Values.secrets.databaseKeys.trainingOrchestrator }}
+            - name: TRAINING_ORCHESTRATOR_ARTIFACT_SIGNING_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: trainingArtifactSigningKey
+            - name: TRAINING_ORCHESTRATOR_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: trainingApiKey
+            - name: TRAINING_ORCHESTRATOR_ALLOWED_DATASET_ROOTS
+              value: {{ .Values.trainingOrchestrator.datasetMountPath | quote }}
+            - name: TRAINING_ORCHESTRATOR_SERVING_CONFIRMATION_REQUIRED
+              value: {{ .Values.modelServing.enabled | quote }}
+            - name: TRAINING_ORCHESTRATOR_SERVING_CONFIRM_TIMEOUT_SECONDS
+              value: {{ .Values.modelServing.confirmationTimeoutSeconds | quote }}
+            - name: TRAINING_ORCHESTRATOR_PACKAGE_OUTPUT_DIR
+              value: {{ .Values.trainingOrchestrator.packageMountPath | quote }}
+            - name: TRAINING_ORCHESTRATOR_ALLOW_SYNTHETIC_TRAINING
+              value: {{ .Values.trainingOrchestrator.allowSyntheticTraining | quote }}
+            - name: TRAINING_ORCHESTRATOR_ALLOW_SYNCHRONOUS_TRAINING
+              value: {{ .Values.trainingOrchestrator.allowSynchronousTraining | quote }}
+          volumeMounts:
+            - name: model-packages
+              mountPath: {{ .Values.trainingOrchestrator.packageMountPath }}
+            - name: reviewed-datasets
+              mountPath: {{ .Values.trainingOrchestrator.datasetMountPath }}
+              readOnly: true
+          resources:
+            {{- toYaml .Values.trainingOrchestrator.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.trainingOrchestrator.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.trainingOrchestrator.service.port }}
+      volumes:
+        - name: model-packages
+          persistentVolumeClaim:
+            claimName: {{ required "trainingOrchestrator.packageClaimName is required" .Values.trainingOrchestrator.packageClaimName }}
+        - name: reviewed-datasets
+          persistentVolumeClaim:
+            claimName: {{ required "trainingOrchestrator.datasetClaimName is required" .Values.trainingOrchestrator.datasetClaimName }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: training-orchestrator
+  namespace: {{ .Values.namespaces.training }}
+spec:
+  selector:
+    app: training-orchestrator
+  ports:
+    - port: {{ .Values.trainingOrchestrator.service.port }}
+      targetPort: {{ .Values.trainingOrchestrator.service.port }}

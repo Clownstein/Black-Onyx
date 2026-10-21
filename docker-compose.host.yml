@@ -1,0 +1,144 @@
+# Optional host-dependency overlay. Apply LAST, after platform.yml and the app
+# overlays, when Postgres / Qdrant already run on the host or another Docker
+# network and this machine has no NVIDIA runtime.
+#
+# Example:
+#   docker compose \
+#     -f docker-compose.yml \
+#     -f docker-compose.platform.yml \
+#     -f docker-compose.security-tools.yml \
+#     -f docker-compose.host.yml \
+#     up -d
+#
+# Optional env:
+#   HOST_QDRANT_UPSTREAM   Docker DNS name of the existing Qdrant (default black-onyx-qdrant)
+#   HOST_POSTGRES_FORWARD  host:port reachable from this compose network (default 172.30.0.1:5432)
+#   INTELLIGENCE_NETWORK_NAME
+#   ANTARES_HF_HUB_DIR      host path to the Hugging Face hub checkout for fdtn-ai/antares-1b
+#   ANTARES_MODEL_SNAPSHOT  snapshot id under that hub dir (default below)
+
+services:
+  # Forwards to an existing Qdrant container on the Black Onyx network.
+  qdrant-upstream:
+    image: alpine:3.24
+    restart: unless-stopped
+    networks:
+      - default
+      - intelligence
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        apk add --no-cache socat
+        socat TCP-LISTEN:6333,fork,reuseaddr TCP:${HOST_QDRANT_UPSTREAM:-black-onyx-qdrant}:6333 &
+        socat TCP-LISTEN:6334,fork,reuseaddr TCP:${HOST_QDRANT_UPSTREAM:-black-onyx-qdrant}:6334 &
+        wait
+    healthcheck:
+      test: ["CMD-SHELL", "socat -T1 - TCP:127.0.0.1:6333 </dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  qdrant:
+    profiles: !reset []
+    image: alpine:3.24
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        apk add --no-cache socat
+        socat TCP-LISTEN:6333,fork,reuseaddr TCP:qdrant-upstream:6333 &
+        socat TCP-LISTEN:6334,fork,reuseaddr TCP:qdrant-upstream:6334 &
+        wait
+    ports: !reset []
+    volumes: !reset []
+    depends_on:
+      qdrant-upstream:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "socat -T1 - TCP:127.0.0.1:6333 </dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # Forward to host / sibling-network Postgres. Set HOST_POSTGRES_FORWARD to the
+  # address this compose network can reach (bridge gateway, host.docker.internal, …).
+  postgres:
+    image: alpine:3.24
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        apk add --no-cache socat
+        exec socat TCP-LISTEN:5432,fork,reuseaddr TCP:${HOST_POSTGRES_FORWARD:-172.30.0.1:5432}
+    environment: !reset {}
+    ports: !reset []
+    volumes: !reset []
+    healthcheck:
+      test: ["CMD-SHELL", "socat -T1 - TCP:127.0.0.1:5432 </dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  # The distroless debug base sets ENTRYPOINT to busybox sh, which then tries
+  # to interpret the Python binary as a shell script.
+  code-processor:
+    entrypoint: []
+
+  # No NVIDIA runtime: serve Black-Onyx-5B Q8_0 with the CPU llama.cpp image.
+  # Place GGUF weights under ./models/Black-Onyx-5B-GGUF (see that directory README).
+  # Hardcoded (not LLAMA_SERVER_IMAGE) so this overlay does not fight the CUDA
+  # default in docker-compose.security-tools.yml.
+  llama-server:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    volumes: !override
+      - ${BLACK_ONYX_5B_DIR:-./models/Black-Onyx-5B-GGUF}:/models:ro
+    command:
+      - "-m"
+      - "/models/${BLACK_ONYX_5B_FILE:-Black-Onyx-5B-Q8_0.gguf}"
+      - "-a"
+      - "${LLM_MODEL_NAME:-Black-Onyx-5B:Q8_0}"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8081"
+      - "-c"
+      - "${LLAMA_CTX:-131072}"
+      - "-np"
+      - "1"
+      - "-ngl"
+      - "${LLAMA_N_GPU_LAYERS:-0}"
+      - "--jinja"
+      - "--mmproj"
+      - "/models/${BLACK_ONYX_5B_MMPROJ:-Black-Onyx-5B-mmproj.gguf}"
+    deploy: !reset null
+    healthcheck:
+      start_period: 300s
+
+  tool-router:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    deploy: !reset null
+
+  # Antares-1B is a safetensors checkpoint. The published vLLM image needs CUDA;
+  # this overlay serves the HF checkout with transformers on CPU instead.
+  # Set ANTARES_HF_HUB_DIR to the local hub dir for models--fdtn-ai--antares-1b.
+  vllm-antares:
+    profiles: !reset []
+    image: black-onyx:1.0.0
+    entrypoint: ["python", "/serve_antares_cpu.py"]
+    command: !reset []
+    environment:
+      ANTARES_MODEL_PATH: /models/antares-hf/snapshots/${ANTARES_MODEL_SNAPSHOT:-10417eb35641b32e7141157db19c76eb545193b6}
+    volumes: !override
+      - ${ANTARES_HF_HUB_DIR:?Set ANTARES_HF_HUB_DIR to the Hugging Face hub models--fdtn-ai--antares-1b directory}:/models/antares-hf:ro
+      - ./scripts/serve_antares_cpu.py:/serve_antares_cpu.py:ro
+    deploy: !reset null
+    healthcheck:
+      start_period: 240s
+
+networks:
+  intelligence:
+    external: true
+    name: ${INTELLIGENCE_NETWORK_NAME:-black-onyx_intelligence-network}

@@ -1,0 +1,15 @@
+# Minimal SearXNG settings for Black Onyx web search.
+#
+# No secret is stored here on purpose. SearXNG reads `server.secret_key` from the
+# SEARXNG_SECRET environment variable, which docker-compose supplies; set a real
+# random value (`openssl rand -hex 32`) in .env for any non-local deployment.
+use_default_settings: true
+server:
+  limiter: false
+  image_proxy: false
+search:
+  formats:
+    - html
+    - json
+ui:
+  static_use_hash: true

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/schemas/threat_intel_match_result.json",
+  "title": "ThreatIntelMatchResult",
+  "description": "Result of matching observables against the indicator store.",
+  "type": "object",
+  "required": ["matches"],
+  "properties": {
+    "matches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "value", "confidence", "source"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string" },
+          "value": { "type": "string" },
+          "confidence": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "source": { "type": "string" },
+          "tlp": { "type": ["string", "null"] },
+          "mitre_techniques": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": true
+      }
+    },
+    "campaigns": { "type": "array", "items": { "type": "string" } },
+    "tlp": { "type": ["string", "null"] }
+  },
+  "additionalProperties": true
+}

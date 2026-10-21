@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: training-worker
+  namespace: {{ .Values.namespaces.training }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: training-worker
+spec:
+  replicas: {{ .Values.trainingOrchestrator.workerReplicaCount }}
+  selector:
+    matchLabels:
+      app: training-worker
+  template:
+    metadata:
+      labels:
+        app: training-worker
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: training-worker
+          image: {{ .Values.trainingOrchestrator.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          command: ["python", "-m", "training_orchestrator.worker"]
+          env:
+            - name: TRAINING_ORCHESTRATOR_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: {{ .Values.secrets.databaseKeys.trainingOrchestrator }}
+            - name: TRAINING_ORCHESTRATOR_ARTIFACT_SIGNING_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: trainingArtifactSigningKey
+            - name: TRAINING_ORCHESTRATOR_ALLOWED_DATASET_ROOTS
+              value: {{ .Values.trainingOrchestrator.datasetMountPath | quote }}
+            - name: TRAINING_ORCHESTRATOR_PACKAGE_OUTPUT_DIR
+              value: {{ .Values.trainingOrchestrator.packageMountPath | quote }}
+            - name: TRAINING_ORCHESTRATOR_ALLOW_SYNTHETIC_TRAINING
+              value: {{ .Values.trainingOrchestrator.allowSyntheticTraining | quote }}
+          volumeMounts:
+            - name: model-packages
+              mountPath: {{ .Values.trainingOrchestrator.packageMountPath }}
+            - name: reviewed-datasets
+              mountPath: {{ .Values.trainingOrchestrator.datasetMountPath }}
+              readOnly: true
+          resources:
+            {{- toYaml .Values.trainingOrchestrator.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: model-packages
+          persistentVolumeClaim:
+            claimName: {{ required "trainingOrchestrator.packageClaimName is required" .Values.trainingOrchestrator.packageClaimName }}
+        - name: reviewed-datasets
+          persistentVolumeClaim:
+            claimName: {{ required "trainingOrchestrator.datasetClaimName is required" .Values.trainingOrchestrator.datasetClaimName }}

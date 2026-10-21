@@ -1,0 +1,21 @@
+{
+  "indicator_id": "ind-cisa-kev-CVE-2024-3400",
+  "tenant_id": null,
+  "observable_type": "cve",
+  "observable_value": "CVE-2024-3400",
+  "pattern": null,
+  "source": "cisa-kev",
+  "confidence": 95,
+  "tlp": "clear",
+  "valid_from": "2024-04-12T00:00:00Z",
+  "valid_until": null,
+  "labels": ["kev", "known_exploited"],
+  "campaigns": [],
+  "mitre_techniques": ["T1190"],
+  "external_refs": [
+    {
+      "source_name": "cisa-kev",
+      "url": "https://www.cisa.gov/known-exploited-vulnerabilities-catalog"
+    }
+  ]
+}

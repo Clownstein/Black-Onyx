@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "tenant_hint": "tenant-purple",
+  "notes": "Expected finding_type values after lab Atomic/Caldera execution. Not runtime-proven by this harness alone.",
+  "techniques": [
+    {
+      "technique_id": "T1059.001",
+      "name": "PowerShell",
+      "expected_finding_types": ["host_state_process_anomaly", "sigma:suspicious_powershell"],
+      "modality_hints": ["host-state", "logs"]
+    },
+    {
+      "technique_id": "T1003.001",
+      "name": "LSASS Memory",
+      "expected_finding_types": ["host_state_credential_access", "sigma:lsass_access"],
+      "modality_hints": ["host-state", "logs"]
+    },
+    {
+      "technique_id": "T1046",
+      "name": "Network Service Discovery",
+      "expected_finding_types": ["suricata_alert", "port_scan_heuristic"],
+      "modality_hints": ["network"]
+    },
+    {
+      "technique_id": "T1021.002",
+      "name": "SMB/Windows Admin Shares",
+      "expected_finding_types": ["host_state_lateral_movement", "suricata_alert"],
+      "modality_hints": ["host-state", "network"]
+    },
+    {
+      "technique_id": "T1547.001",
+      "name": "Registry Run Keys / Startup Folder",
+      "expected_finding_types": ["host_state_persistence", "sigma:autorun_change"],
+      "modality_hints": ["host-state"]
+    }
+  ]
+}

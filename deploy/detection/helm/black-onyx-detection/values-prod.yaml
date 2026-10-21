@@ -1,0 +1,69 @@
+# Production overlay - fail-closed auth; no demo keys in values.
+# Usage:
+#   helm upgrade --install black-onyx-detection . -f values.yaml -f values-prod.yaml
+#
+# Required Secret `black-onyx-detection-secrets` keys include the eight database URL
+# keys from values.yaml, OIDC/service credentials, object-store credentials,
+# notification credentials, and the training artifact signing key.
+# CAPE URL/token are optional; omitting them keeps malware orchestration non-ready.
+# wazuhApiUser and wazuhApiPassword are optional Secret keys. Set wazuh.edrProvider
+# to wazuh and wazuh.apiUrl when approved isolate-host requests should use active response.
+# Configure OIDC issuer, JWKS URL, and audience below; keep signing/service credentials
+# in the required Secret.
+# Configure each model's artifactClaimName with a PVC containing reviewed weights;
+# omitting a claim deliberately keeps that model non-ready.
+
+security:
+  oidcDisabled: false
+  allowDemoKeys: false
+  requireServiceKeys: true
+
+# Production installation must provide this Secret in every workload namespace.
+secrets:
+  name: black-onyx-detection-secrets
+
+featureFlags:
+  externalTiPolling: true
+  airgapMode: false
+  opensearchIndexing: true
+
+ingress:
+  enabled: true
+  className: nginx
+  controllerNamespace: ingress-nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    frontend: detection.example.com
+    incidentApi: api.detection.example.com
+    ingestionGateway: ingest.detection.example.com
+  tls:
+    - secretName: black-onyx-edge-tls
+      hosts:
+        - detection.example.com
+        - api.detection.example.com
+        - ingest.detection.example.com
+
+networkPolicy:
+  denyIngressDefault: true
+  allowRules: true
+
+# Promotions and rollback remain blocked until the actual replicas report the
+# signed package generation they are serving.
+modelServing:
+  enabled: true
+
+correlationEngine:
+  assetRegistryRequired: true
+
+# Production expects real OIDC issuer/JWKS; inject them through Secret/config.
+oidc:
+  issuer: https://id.example.com/realms/black-onyx
+  audience: black-onyx-detection
+  jwksUrl: https://id.example.com/realms/black-onyx/protocol/openid-connect/certs
+
+malwareProcessor:
+  publishFindings: "true"
+
+responseOrchestrator:
+  dryRunDefault: "true"

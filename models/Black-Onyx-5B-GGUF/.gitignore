@@ -1,0 +1,15 @@
+# GGUF weights are large and stay out of git. Download them next to this README:
+#
+#   huggingface-cli download <org>/Black-Onyx-5B-GGUF \
+#     --local-dir models/Black-Onyx-5B-GGUF
+#
+# Expected files (names match docker-compose.security-tools.yml / host.yml):
+#   Black-Onyx-5B-Q8_0.gguf
+#   Black-Onyx-5B-mmproj.gguf
+# Optional smaller/larger quantizations: Q2_K, Q4_K, Q5_K, Q6_K, BF16, F16.
+#
+# Point Compose at this directory with BLACK_ONYX_5B_DIR (default here for the
+# host overlay, or ./models/Black-Onyx-5B for the CUDA security-tools default).
+
+*.gguf
+.git/

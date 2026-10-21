@@ -1,0 +1,31 @@
+pack_id: surface-webapp
+kind: surface
+version: '1.0'
+title: Web App Surface Checks
+extends_surfaces:
+- webapp
+- code
+checks:
+- check_id: surface.webapp.headers
+  title: Security headers and TLS
+  surfaces:
+  - webapp
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - probe
+  bindings:
+    detectors:
+    - tls_probe_weak
+- check_id: surface.webapp.sast
+  title: SAST/SCA in CI
+  surfaces:
+  - code
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    scanners:
+    - owasp-asvs
+    - cis-appsec

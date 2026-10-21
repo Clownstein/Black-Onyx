@@ -1,0 +1,71 @@
+# MISP on the Black Onyx network as hostname `misp`.
+# Credentials come from .env and have no defaults; scripts/bootstrap_full_stack.sh
+# generates them, provisions MISP_API_KEY via `cake user change_authkey`, and
+# configures TIP MISP sync. Internal URL: http://misp.
+
+services:
+  misp-db:
+    image: mariadb:10.11
+    container_name: blackonyx-misp-db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MISP_DB_ROOT_PASSWORD:?Set MISP_DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: misp
+      MYSQL_USER: misp
+      MYSQL_PASSWORD: ${MISP_DB_PASSWORD:?Set MISP_DB_PASSWORD}
+    volumes:
+      - misp_db:/var/lib/mysql
+    healthcheck:
+      test: [CMD, healthcheck.sh, --connect, --innodb_initialized]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  misp-redis:
+    image: redis:7-alpine
+    container_name: blackonyx-misp-redis
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  misp:
+    image: coolacid/misp-docker:core-latest@sha256:02fcca47635f0128d2d0ddc451d63ac12c6c819775713588f0a6d53840e70721
+    container_name: blackonyx-misp
+    hostname: misp
+    depends_on:
+      misp-db:
+        condition: service_healthy
+      misp-redis:
+        condition: service_healthy
+    environment:
+      BASEURL: http://misp
+      NOREDIR: "true"
+      INIT: "true"
+      REDIS_FQDN: misp-redis
+      MYSQL_HOST: misp-db
+      MYSQL_DATABASE: misp
+      MYSQL_USER: misp
+      MYSQL_PASSWORD: ${MISP_DB_PASSWORD:?Set MISP_DB_PASSWORD}
+      # coolacid image seeds admin@admin.test; ADMIN_EMAIL overrides on INIT.
+      ADMIN_EMAIL: ${MISP_ADMIN_EMAIL:?Set MISP_ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${MISP_ADMIN_PASSPHRASE:?Set MISP_ADMIN_PASSPHRASE}
+      MISP_ADMIN_EMAIL: ${MISP_ADMIN_EMAIL:?Set MISP_ADMIN_EMAIL}
+      MISP_ADMIN_PASSPHRASE: ${MISP_ADMIN_PASSPHRASE:?Set MISP_ADMIN_PASSPHRASE}
+      CRON_USER_ID: "1"
+    volumes:
+      - ./data/misp-ssl:/etc/nginx/certs:ro
+      - misp_configs:/var/www/MISP/app/Config
+      - misp_files:/var/www/MISP/app/files
+      - misp_logs:/var/www/MISP/app/tmp/logs
+    ports:
+      - "127.0.0.1:${MISP_HOST_PORT:-8088}:80"
+    restart: unless-stopped
+
+volumes:
+  misp_db:
+  misp_configs:
+  misp_files:
+  misp_logs:

@@ -1,0 +1,145 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: incident-api
+  namespace: {{ .Values.namespaces.application }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: incident-api
+spec:
+  replicas: {{ .Values.incidentApi.replicaCount }}
+  selector:
+    matchLabels:
+      app: incident-api
+  template:
+    metadata:
+      labels:
+        app: incident-api
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: incident-api
+          image: {{ .Values.incidentApi.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.incidentApi.service.port }}
+          env:
+            - name: INCIDENT_API_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "secrets.name is required" .Values.secrets.name }}
+                  key: {{ required "incident API database secret key is required" .Values.secrets.databaseKeys.incidentApi }}
+            - name: OIDC_DISABLED
+              value: {{ .Values.security.oidcDisabled | quote }}
+            - name: OIDC_ISSUER
+              value: {{ if .Values.security.oidcDisabled }}""{{ else }}{{ required "oidc.issuer is required when OIDC is enabled" .Values.oidc.issuer | quote }}{{ end }}
+            - name: OIDC_AUDIENCE
+              value: {{ if .Values.security.oidcDisabled }}""{{ else }}{{ required "oidc.audience is required when OIDC is enabled" .Values.oidc.audience | quote }}{{ end }}
+            - name: OIDC_JWKS_URL
+              value: {{ if .Values.security.oidcDisabled }}""{{ else }}{{ required "oidc.jwksUrl is required when OIDC is enabled" .Values.oidc.jwksUrl | quote }}{{ end }}
+            - name: OIDC_HS_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: oidcHsSecret
+                  optional: {{ .Values.security.oidcDisabled }}
+            - name: OPENSEARCH_URL
+              value: {{ required "externalDependencies.opensearchUrl is required" .Values.externalDependencies.opensearchUrl | quote }}
+            - name: INCIDENT_API_OPENSEARCH_INDEXING
+              value: {{ .Values.featureFlags.opensearchIndexing | quote }}
+            - name: INCIDENT_API_DEPLOYMENT_CONSUMER_ENABLED
+              value: {{ .Values.incidentApi.deploymentConsumerEnabled | default "false" | quote }}
+            - name: INCIDENT_API_KAFKA_BROKERS
+              value: {{ required "externalDependencies.kafkaBrokers is required" .Values.externalDependencies.kafkaBrokers | quote }}
+            - name: INCIDENT_API_MINIO_ENDPOINT
+              value: {{ required "externalDependencies.objectStoreEndpoint is required" .Values.externalDependencies.objectStoreEndpoint | quote }}
+            - name: INCIDENT_API_MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: objectStoreAccessKey
+            - name: INCIDENT_API_MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: objectStoreSecretKey
+            - name: INCIDENT_API_DEPLOYMENT_TOPIC
+              value: deployments.raw
+            - name: INCIDENT_API_DEPLOYMENT_DLQ_TOPIC
+              value: deployments.raw.dlq
+            - name: INCIDENT_API_SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: incidentApiServiceKey
+                  optional: {{ .Values.security.allowDemoKeys }}
+            - name: QDRANT_URL
+              value: {{ required "externalDependencies.qdrantUrl is required" .Values.externalDependencies.qdrantUrl | quote }}
+            - name: VECTOR_SEARCH_ENABLED
+              value: {{ .Values.featureFlags.vectorSearchEnabled | quote }}
+            - name: FEDERATED_HUNT_ENABLED
+              value: {{ .Values.featureFlags.federatedHuntEnabled | default "false" | quote }}
+          resources:
+            {{- toYaml .Values.incidentApi.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem }}
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.incidentApi.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.incidentApi.service.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: incident-api
+  namespace: {{ .Values.namespaces.application }}
+spec:
+  selector:
+    app: incident-api
+  ports:
+    - port: {{ .Values.incidentApi.service.port }}
+      targetPort: {{ .Values.incidentApi.service.port }}
+{{- if .Values.podDisruptionBudget.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: incident-api
+  namespace: {{ .Values.namespaces.application }}
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      app: incident-api
+{{- end }}
+{{- if .Values.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: incident-api
+  namespace: {{ .Values.namespaces.application }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: incident-api
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}

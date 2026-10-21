@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: response-orchestrator
+  namespace: {{ .Values.namespaces.application }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: response-orchestrator
+spec:
+  replicas: {{ .Values.responseOrchestrator.replicaCount }}
+  selector:
+    matchLabels:
+      app: response-orchestrator
+  template:
+    metadata:
+      labels:
+        app: response-orchestrator
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: response-orchestrator
+          image: {{ .Values.responseOrchestrator.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.responseOrchestrator.service.port }}
+          env:
+            - name: RESPONSE_ORCHESTRATOR_PORT
+              value: {{ .Values.responseOrchestrator.service.port | quote }}
+            - name: RESPONSE_ORCHESTRATOR_DRY_RUN_DEFAULT
+              value: {{ .Values.responseOrchestrator.dryRunDefault | quote }}
+            - name: RESPONSE_ORCHESTRATOR_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: {{ .Values.secrets.databaseKeys.responseOrchestrator }}
+            - name: RESPONSE_ORCHESTRATOR_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: responseOrchestratorApiKey
+                  optional: {{ .Values.security.allowDemoKeys }}
+            - name: RESPONSE_ORCHESTRATOR_APPROVER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: responseApproverApiKey
+                  optional: true
+            - name: RESPONSE_ORCHESTRATOR_EDR_PROVIDER
+              value: {{ .Values.wazuh.edrProvider | quote }}
+            - name: RESPONSE_ORCHESTRATOR_WAZUH_API_URL
+              value: {{ .Values.wazuh.apiUrl | quote }}
+            - name: RESPONSE_ORCHESTRATOR_WAZUH_API_CA_FILE
+              value: {{ .Values.wazuh.apiCaFile | quote }}
+            - name: RESPONSE_ORCHESTRATOR_WAZUH_API_VERIFY_TLS
+              value: {{ .Values.wazuh.apiVerifyTls | quote }}
+            - name: RESPONSE_ORCHESTRATOR_WAZUH_AR_COMMAND
+              value: {{ .Values.wazuh.arCommand | quote }}
+            - name: RESPONSE_ORCHESTRATOR_WAZUH_AR_COMMAND_WINDOWS
+              value: {{ .Values.wazuh.arCommandWindows | quote }}
+            - name: RESPONSE_ORCHESTRATOR_WAZUH_ISOLATION_ALLOW
+              value: {{ .Values.wazuh.isolationAllow | quote }}
+            - name: RESPONSE_ORCHESTRATOR_WAZUH_API_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: wazuhApiUser
+                  optional: true
+            - name: RESPONSE_ORCHESTRATOR_WAZUH_API_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: wazuhApiPassword
+                  optional: true
+          resources:
+            {{- toYaml .Values.responseOrchestrator.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.responseOrchestrator.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.responseOrchestrator.service.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: response-orchestrator
+  namespace: {{ .Values.namespaces.application }}
+spec:
+  selector:
+    app: response-orchestrator
+  ports:
+    - port: {{ .Values.responseOrchestrator.service.port }}
+      targetPort: {{ .Values.responseOrchestrator.service.port }}

@@ -1,0 +1,42 @@
+rules:
+  - id: secrets-scan-hardcoded-password
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Hardcoded password assigned to a credential-like variable. Load secrets
+      from the environment or a secrets manager.
+    metadata:
+      profile: secrets-scan
+      category: security
+      cwe: "CWE-798"
+    patterns:
+      - pattern: $VAR = "..."
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: (?i)^(password|passwd|pwd|secret|api_key|apikey|token|access_key|private_key)$
+
+  - id: secrets-scan-aws-access-key
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Possible hardcoded AWS access key id in source. Rotate and move to a
+      secrets store immediately.
+    metadata:
+      profile: secrets-scan
+      category: security
+      cwe: "CWE-798"
+    patterns:
+      - pattern: $VAR = "=~/AKIA[0-9A-Z]{16}/"
+
+  - id: secrets-scan-private-key-block
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Private key material embedded in source. Store keys outside the
+      repository (secrets manager / mounted secret).
+    metadata:
+      profile: secrets-scan
+      category: security
+      cwe: "CWE-798"
+    patterns:
+      - pattern: $VAR = "=~/-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/"

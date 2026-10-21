@@ -1,0 +1,30 @@
+# Qwen3-Embedding-4B via Ollama operator profile
+# Preferred local tag (already pulled on many hosts):
+#   ollama pull hf.co/Qwen/Qwen3-Embedding-4B-GGUF:Q4_K_M
+# Alternate community tags:
+#   ollama pull dengcao/Qwen3-Embedding-4B:Q4_K_M
+# Combined lab profile (embed + Black Onyx 5B via Ollama /v1):
+#   config.operator.local.example.yaml
+
+embedding:
+  backend: ollama
+  model_name: "hf.co/Qwen/Qwen3-Embedding-4B-GGUF:Q4_K_M"
+  ollama_base_url: "http://localhost:11434"
+  dimensions: 2560
+  query_instruct: "Given a threat-intel search query, retrieve relevant passages that answer the query"
+  rag_query_instruct: "Given an analyst question, retrieve relevant evidence passages from the knowledge base"
+
+# Re-index required: run scripts/reindex_tip_collections.py after switching embedders.
+# TIP collections must be 2560-dim (not compatible with 768-dim mpnet collections).
+
+ingestion:
+  collection_name: "all-knowledge-qwen3"
+
+llm:
+  # Chat LLM uses same Ollama host but /api/chat separate from /api/embed
+  # For Black Onyx 5B prefer openai_compatible → http://127.0.0.1:8081/v1
+  # (see config.operator.local.example.yaml / config.black-onyx-5b.example.yaml)
+  provider: local
+  local:
+    base_url: "http://localhost:8081"
+    model: "Black-Onyx-5B:Q8_0"

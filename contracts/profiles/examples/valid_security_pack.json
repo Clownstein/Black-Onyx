@@ -1,0 +1,34 @@
+{
+  "pack_id": "cis-v8-ig1",
+  "kind": "framework",
+  "version": "8.1",
+  "title": "CIS Controls v8.1 Implementation Group 1",
+  "description": "Practical IG1 safeguards for baseline defense.",
+  "extends_surfaces": ["network", "host", "webapp", "identity"],
+  "checks": [
+    {
+      "check_id": "cis.v8.1.asset-inventory",
+      "title": "Enterprise assets inventoried",
+      "surfaces": ["network", "host", "cloud"],
+      "automation": "hybrid",
+      "severity_default": "high",
+      "evidence_types": ["config_assert", "detector_hit"],
+      "bindings": {
+        "detectors": ["asset_registry_gap", "unauthorized_device"]
+      }
+    },
+    {
+      "check_id": "cis.v8.8.audit-log-management",
+      "title": "Audit log management",
+      "surfaces": ["host", "network", "identity"],
+      "automation": "auto",
+      "severity_default": "high",
+      "mitre_techniques": ["T1070"],
+      "evidence_types": ["log_presence", "detector_hit"],
+      "bindings": {
+        "detectors": ["log_source_silent"],
+        "required_log_sources": ["idp", "firewall", "os_auth"]
+      }
+    }
+  ]
+}

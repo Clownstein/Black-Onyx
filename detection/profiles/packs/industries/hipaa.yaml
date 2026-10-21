@@ -1,0 +1,68 @@
+pack_id: hipaa
+kind: industry
+version: '2026'
+title: Healthcare HIPAA / HITECH
+recommended_backbone:
+- nist-csf-2
+- cis-v8-ig1
+extends_surfaces:
+- host
+- identity
+- network
+- webapp
+checks:
+- check_id: hipaa.phi.inventory
+  title: Systems handling PHI inventoried
+  surfaces:
+  - host
+  - cloud
+  automation: manual
+  severity_default: high
+  evidence_types:
+  - attestation
+- check_id: hipaa.phi.access-logged
+  title: PHI system access unique role-based logged
+  surfaces:
+  - identity
+  - webapp
+  automation: auto
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+- check_id: hipaa.phi.encryption
+  title: ePHI encrypted at rest and in transit
+  surfaces:
+  - host
+  - webapp
+  - cloud
+  automation: hybrid
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+- check_id: hipaa.baa.vendors
+  title: BAAs for vendors touching PHI
+  surfaces:
+  - cloud
+  automation: manual
+  severity_default: high
+  evidence_types:
+  - attestation
+- check_id: hipaa.breach.playbooks
+  title: Breach notification playbooks
+  surfaces:
+  - identity
+  automation: manual
+  severity_default: high
+  evidence_types:
+  - attestation
+- check_id: hipaa.iomt.segmentation
+  title: IoMT / medical device segmentation
+  surfaces:
+  - network
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - cross_zone_flow

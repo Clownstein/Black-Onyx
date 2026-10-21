@@ -1,0 +1,8 @@
+{
+  "model_name": "metrics-model",
+  "model_version": "1.2.0",
+  "hidden": 96,
+  "layers": 3,
+  "heads": 4,
+  "window": 60
+}

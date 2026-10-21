@@ -1,0 +1,65 @@
+# Optional overlay when Qdrant (and optionally other deps) already run on an
+# external Docker network such as the Black Onyx network.
+#
+# This host has no NVIDIA runtime; GPU reservations are cleared.
+#
+# Use with:
+#   docker compose -f docker-compose.yml -f docker-compose.external.yml up -d
+#
+# Required env:
+#   QDRANT_QDRANT__API_KEY
+#   QDRANT_SECURITY__ALLOWED_HOSTS
+# Optional env:
+#   QDRANT_SECURITY__EXTERNAL_URL (default http://localhost:8000)
+#   INTELLIGENCE_NETWORK_NAME (default black-onyx_intelligence-network)
+
+services:
+  qdrant:
+    profiles: ["bundled-qdrant"]
+    ports: !reset []
+
+  web:
+    gpus: !reset null
+    networks:
+      - default
+      - intelligence
+    environment:
+      QDRANT_QDRANT__HOST: qdrant
+      QDRANT_QDRANT__PORT: "6333"
+      QDRANT_QDRANT__API_KEY: ${QDRANT_QDRANT__API_KEY:?Set QDRANT_QDRANT__API_KEY}
+      QDRANT_SECURITY__EXTERNAL_URL: ${QDRANT_SECURITY__EXTERNAL_URL:-http://localhost:8000}
+      QDRANT_SECURITY__ALLOWED_HOSTS: ${QDRANT_SECURITY__ALLOWED_HOSTS:?Set QDRANT_SECURITY__ALLOWED_HOSTS}
+      QDRANT_SECURITY__PRODUCTION: "false"
+      QDRANT_SECURITY__SECURE_COOKIES: "false"
+    depends_on: !override
+      searxng:
+        condition: service_started
+      state-permissions:
+        condition: service_completed_successfully
+
+  cli:
+    gpus: !reset null
+    networks:
+      - default
+      - intelligence
+    environment:
+      QDRANT_QDRANT__HOST: qdrant
+      QDRANT_QDRANT__PORT: "6333"
+      QDRANT_QDRANT__API_KEY: ${QDRANT_QDRANT__API_KEY:?Set QDRANT_QDRANT__API_KEY}
+      QDRANT_SECURITY__EXTERNAL_URL: ${QDRANT_SECURITY__EXTERNAL_URL:-http://localhost:8000}
+      QDRANT_SECURITY__ALLOWED_HOSTS: ${QDRANT_SECURITY__ALLOWED_HOSTS:?Set QDRANT_SECURITY__ALLOWED_HOSTS}
+      QDRANT_SECURITY__PRODUCTION: "false"
+      QDRANT_SECURITY__SECURE_COOKIES: "false"
+    depends_on: !override
+      searxng:
+        condition: service_started
+      state-permissions:
+        condition: service_completed_successfully
+
+  searxng:
+    ports: !reset []
+
+networks:
+  intelligence:
+    external: true
+    name: ${INTELLIGENCE_NETWORK_NAME:-black-onyx_intelligence-network}

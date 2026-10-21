@@ -1,0 +1,40 @@
+pack_id: ferpa
+kind: industry
+version: '2026'
+title: Education FERPA / EdTech
+recommended_backbone:
+- nist-csf-2
+- cis-v8-ig1
+extends_surfaces:
+- identity
+- webapp
+- cloud
+checks:
+- check_id: ferpa.sis.rbac
+  title: SIS/LMS role-based access
+  surfaces:
+  - identity
+  - webapp
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+- check_id: ferpa.edtech.contracts
+  title: EdTech vendor data use limits
+  surfaces:
+  - cloud
+  automation: manual
+  severity_default: high
+  evidence_types:
+  - attestation
+- check_id: ferpa.public.minimize
+  title: No unnecessary PII on public pages
+  surfaces:
+  - webapp
+  automation: hybrid
+  severity_default: medium
+  evidence_types:
+  - detector_hit
+  bindings:
+    scanners:
+    - owasp-asvs

@@ -1,0 +1,26 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: retention-job
+  namespace: black-onyx-application
+spec:
+  schedule: "15 3 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+          containers:
+            - name: retention
+              image: black-onyx/incident-api:0.1.0
+              command: ["python", "scripts/migration/retention_job.py"]
+              env:
+                - name: RAW_LOGS_DAYS
+                  value: "14"
+                - name: NORMALIZED_LOGS_DAYS
+                  value: "30"
+                - name: INCIDENTS_DAYS
+                  value: "365"

@@ -1,0 +1,19 @@
+{
+  "event_type": "log.normalized",
+  "template_id": "tpl-auth-failed-login-v2",
+  "template": "Failed login for user <*> from <IP>",
+  "parameters": [
+    {
+      "name": "user",
+      "type": "identifier",
+      "value_hash": "sha256:deadbeef"
+    },
+    {
+      "name": "source_ip",
+      "type": "ip",
+      "category": "internal"
+    }
+  ],
+  "sequence_key": "payments-api:host-payments-03:auth",
+  "severity": "ERROR"
+}

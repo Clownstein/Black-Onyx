@@ -1,0 +1,15 @@
+{
+  "technique_id": "T1071.001",
+  "name": "Web Protocols",
+  "tactics": ["Command and Control"],
+  "domain": "enterprise",
+  "platforms": ["Linux", "Windows", "macOS"],
+  "is_subtechnique": true,
+  "parent_technique_id": "T1071",
+  "text": "T1071.001 Web Protocols - adversaries may communicate using application layer protocols associated with web traffic",
+  "url": "https://attack.mitre.org/techniques/T1071/001/",
+  "attack_version": "16.1",
+  "embed_model": "cisco-ai/SecureBERT2.0-biencoder",
+  "embed_version": "1",
+  "schema_version": "1.0"
+}

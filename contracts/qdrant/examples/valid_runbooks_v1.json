@@ -1,0 +1,19 @@
+{
+  "tenant_id": "__global__",
+  "doc_id": "runbook-broker-outage",
+  "chunk_id": "runbook-broker-outage:2",
+  "chunk_index": 2,
+  "title": "Broker outage",
+  "section": "Verification",
+  "source_path": "docs/operations/runbooks/broker-outage.md",
+  "doc_type": "runbook",
+  "tags": ["kafka", "redpanda", "availability"],
+  "mitre_techniques": [],
+  "modalities": [],
+  "text": "Verify Redpanda topic lag and producer errors; confirm clients use localhost:19092 from host",
+  "updated_at": "2026-07-20T00:00:00.000Z",
+  "updated_at_ts": 1784505600,
+  "embed_model": "cisco-ai/SecureBERT2.0-biencoder",
+  "embed_version": "1",
+  "schema_version": "1.0"
+}

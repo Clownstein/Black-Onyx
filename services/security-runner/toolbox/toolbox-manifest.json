@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "runtime_installation": false,
+  "network": "none unless attached to a verified per-job guard namespace",
+  "binary_requirements": [
+    "nmap", "sqlmap", "nikto", "whois", "gobuster", "hydra", "cast", "forge",
+    "slither", "checksec", "r2", "objdump", "strings", "timeout", "file", "tshark"
+  ],
+  "python_requirements": [
+    "capstone", "cryptography", "pwn", "ropper", "slither", "yara"
+  ],
+  "trusted_helpers": ["anvil_send.py"],
+  "wordlists": {
+    "common.txt": {"maximum_lines": 5000, "purpose": "bounded directory discovery"},
+    "usernames.txt": {"maximum_lines": 20, "purpose": "explicitly approved owned-lab authentication testing"},
+    "passwords.txt": {"maximum_lines": 200, "purpose": "explicitly approved owned-lab authentication testing"}
+  },
+  "tool_versions": {
+    "gobuster": "build-argument pinned and SHA-256 verified",
+    "foundry": "build-argument pinned and SHA-256 verified",
+    "solc": "build-argument URL and SHA-256 verified",
+    "nikto": "official release archive version and SHA-256 verified",
+    "python": "dependency versions pinned in toolbox-requirements.txt",
+    "debian": "base image digest and snapshot timestamp required at build"
+  }
+}

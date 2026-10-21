@@ -1,0 +1,68 @@
+# Owned, internal Security Lab targets. The network label and registered
+# profile must agree; security-runner guards reject unregistered lab networks.
+
+services:
+  anvil:
+    image: ${SECURITY_SANDBOX_IMAGE:?Set SECURITY_SANDBOX_IMAGE}
+    container_name: blackonyx-lab-anvil
+    command:
+      - anvil
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8545"
+      - --chain-id
+      - "31337"
+    networks:
+      security-lab:
+        ipv4_address: 10.88.0.10
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python3
+        - -c
+        - "import urllib.request; urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:8545', data=b'{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"web3_clientVersion\",\"params\":[]}', headers={'Content-Type':'application/json'}), timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  lab-http:
+    image: ${SECURITY_SANDBOX_IMAGE:?Set SECURITY_SANDBOX_IMAGE}
+    container_name: blackonyx-lab-http
+    command: [python3, -m, http.server, "80", --bind, 0.0.0.0]
+    networks:
+      security-lab:
+        ipv4_address: 10.88.0.20
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python3
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1/', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+networks:
+  security-lab:
+    name: blackonyx_anvil
+    driver: bridge
+    internal: true
+    enable_ipv6: false
+    labels:
+      com.blackonyx.security-lab-profile: anvil
+    ipam:
+      config:
+        - subnet: 10.88.0.0/24

@@ -1,0 +1,23 @@
+[Unit]
+Description=Black Onyx shipper (osquery, Wazuh alerts, Suricata EVE)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/black-onyx-shipper/shipper.env
+ExecStart=/usr/bin/python3 /opt/black-onyx-shipper/black_onyx_shipper.py
+Restart=always
+RestartSec=10
+StateDirectory=black-onyx-shipper
+# Read access to /var/ossec/logs/alerts and /var/log/suricata; install.sh
+# sets the groups that exist on this host (wazuh, suricata, adm).
+SupplementaryGroups=
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/black-onyx-shipper
+
+[Install]
+WantedBy=multi-user.target

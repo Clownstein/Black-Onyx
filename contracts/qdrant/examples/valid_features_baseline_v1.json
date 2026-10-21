@@ -1,0 +1,19 @@
+{
+  "tenant_id": "tenant-acme",
+  "modality": "network",
+  "asset_id": "asset-checkout-01",
+  "service_id": "checkout",
+  "site_id": "site-ewr",
+  "feature_event_id": "01JFEATURE0000000000000000",
+  "window_start": "2026-07-27T13:45:00.000Z",
+  "window_start_ts": 1785155100,
+  "window_end": "2026-07-27T14:00:00.000Z",
+  "window_end_ts": 1785156000,
+  "is_baseline": true,
+  "sample_rate": 0.1,
+  "feature_fingerprint": "sha256:abc",
+  "expires_at_ts": 1786365600,
+  "embed_model": "network-feature-l2",
+  "embed_version": "1",
+  "schema_version": "1.0"
+}

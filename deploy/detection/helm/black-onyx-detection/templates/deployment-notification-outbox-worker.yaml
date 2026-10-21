@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-outbox-worker
+  namespace: {{ .Values.namespaces.application }}
+  labels:
+    {{- include "black-onyx-detection.labels" . | nindent 4 }}
+    app: notification-outbox-worker
+spec:
+  replicas: {{ .Values.notificationService.outboxWorkerReplicas }}
+  selector:
+    matchLabels:
+      app: notification-outbox-worker
+  template:
+    metadata:
+      labels:
+        app: notification-outbox-worker
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: notification-outbox-worker
+          image: {{ .Values.notificationService.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          command: ["python", "-m", "notification_service.worker"]
+          env:
+            - name: NOTIFICATION_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "secrets.name is required" .Values.secrets.name }}
+                  key: {{ required "notification database secret key is required" .Values.secrets.databaseKeys.notificationService }}
+            - name: NOTIFICATION_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: notificationApiKey
+            - name: SMTP_HOST
+              value: {{ .Values.notificationService.smtpHost | quote }}
+            - name: SMTP_PORT
+              value: {{ .Values.notificationService.smtpPort | quote }}
+            - name: SMTP_USERNAME
+              value: {{ .Values.notificationService.smtpUsername | quote }}
+            - name: SMTP_FROM
+              value: {{ .Values.notificationService.smtpFrom | quote }}
+            - name: SMTP_STARTTLS
+              value: {{ .Values.notificationService.smtpStarttls | quote }}
+            - name: SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: notificationSmtpPassword
+                  optional: true
+          resources:
+            {{- toYaml .Values.notificationService.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem }}
+            capabilities:
+              drop: ["ALL"]

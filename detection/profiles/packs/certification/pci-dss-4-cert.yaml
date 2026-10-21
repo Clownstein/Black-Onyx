@@ -1,0 +1,21 @@
+pack_id: pci-dss-4-cert
+kind: certification
+version: "1.0"
+title: PCI DSS 4.0 control matrix
+description: Auditor evidence matrix for PCI Req 1-12 (not a ROC).
+checks:
+  - check_id: pci.cert.1
+    title: Req 1 network security controls
+    surfaces: [network]
+    automation: auto
+    severity_default: critical
+  - check_id: pci.cert.8
+    title: Req 8 identify users and authenticate
+    surfaces: [identity]
+    automation: hybrid
+    severity_default: high
+  - check_id: pci.cert.10
+    title: Req 10 log and monitor
+    surfaces: [host, network]
+    automation: auto
+    severity_default: high

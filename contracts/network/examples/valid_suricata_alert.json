@@ -1,0 +1,24 @@
+{
+  "event_type": "suricata.alert",
+  "timestamp": "2026-07-27T14:00:00.000000+0000",
+  "flow_id": 1234567890,
+  "community_id": "1:LQU9qZlK+B5F3Y8c6s0y9w==",
+  "src_ip_hash": "sha256:dddddddddddddddddddddddddddddddd",
+  "dest_ip_hash": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+  "src_port": 49152,
+  "dest_port": 445,
+  "proto": "TCP",
+  "sensor_id": "sensor-edge-01",
+  "asset_id": "host-web-01",
+  "alert": {
+    "action": "allowed",
+    "gid": 1,
+    "signature_id": 2100498,
+    "rev": 7,
+    "signature": "ET SCAN Potential SSH Scan",
+    "category": "Attempted Information Leak",
+    "severity": 2
+  },
+  "mitre_tactics": ["TA0007"],
+  "mitre_techniques": ["T1046"]
+}

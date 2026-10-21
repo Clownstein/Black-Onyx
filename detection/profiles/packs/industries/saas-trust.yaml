@@ -1,0 +1,69 @@
+pack_id: saas-trust
+kind: industry
+version: '2026'
+title: Technology / SaaS Consumer Trust
+recommended_backbone:
+- soc2-security
+- iso-27001
+- cis-v8-ig1
+- mitre-attack-core
+extends_surfaces:
+- webapp
+- cloud
+- identity
+- network
+- code
+checks:
+- check_id: saas.tenant.isolation
+  title: Multi-tenant isolation / IDOR negative tests
+  surfaces:
+  - webapp
+  - code
+  automation: auto
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+  bindings:
+    scanners:
+    - saas-tenant
+    - owasp-asvs
+- check_id: saas.sdlc
+  title: Secure SDLC and vuln disclosure
+  surfaces:
+  - code
+  automation: hybrid
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    scanners:
+    - cis-appsec
+- check_id: saas.admin.audit
+  title: Admin impersonation fully audited
+  surfaces:
+  - identity
+  - webapp
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - log_source_silent
+- check_id: saas.privacy.retention
+  title: Retention jobs delete expired data
+  surfaces:
+  - cloud
+  - webapp
+  automation: hybrid
+  severity_default: medium
+  evidence_types:
+  - detector_hit
+- check_id: saas.prod.sso-mfa
+  title: Production access via SSO+MFA
+  surfaces:
+  - identity
+  automation: auto
+  severity_default: critical
+  evidence_types:
+  - detector_hit

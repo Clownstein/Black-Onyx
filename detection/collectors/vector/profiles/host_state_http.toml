@@ -1,0 +1,57 @@
+# Optional Vector profile for advanced deployments.
+# Preferred host path: installers under collectors/installer/* which run
+# black-onyx-shipper with SHIPPER_SOURCES=osquery (builds valid gateway envelopes).
+#
+# This profile flattens osquery `columns` and maps query names, but Vector must
+# still emit EventEnvelope fields (schema_version, ULID event_id, source, asset).
+# Use the Python shipper unless you have a Vector remapping that produces those.
+
+[sources.osquery_results]
+type = "file"
+include = [
+  "/var/log/osquery/osqueryd.results.log",
+  "/var/osquery/osqueryd.results.log",
+  "C:\\Program Files\\osquery\\log\\osqueryd.results.log",
+]
+read_from = "beginning"
+
+[transforms.flatten_osquery]
+type = "remap"
+inputs = ["osquery_results"]
+source = '''
+raw = parse_json!(.message)
+columns = get(raw, ["columns"]) ?? {}
+query_name = to_string!(get(raw, ["name"]) ?? "process_snapshot")
+. = merge(object!(columns), {})
+.tenant_id = get_env_var!("BLACK_ONYX_COLLECTOR_TENANT_ID")
+.asset_id = get_env_var!("BLACK_ONYX_COLLECTOR_ASSET_ID")
+.hostname = get_env_var("BLACK_ONYX_COLLECTOR_HOSTNAME") ?? get_env_var!("BLACK_ONYX_COLLECTOR_ASSET_ID")
+.os_family = get_env_var("BLACK_ONYX_COLLECTOR_OS_FAMILY") ?? "linux"
+.name = query_name
+if query_name == "listening_ports" {
+  .event_type = "host_state.socket_snapshot"
+} else if query_name == "logged_in_users" {
+  .event_type = "host_state.user_session"
+} else if query_name == "startup_items" || query_name == "services" || query_name == "scheduled_tasks" {
+  .event_type = "host_state.autorun_snapshot"
+} else {
+  .event_type = "host_state.process_snapshot"
+}
+unix_time = get(raw, ["unixTime"]) ?? get(raw, ["unix_time"])
+if unix_time != null {
+  .occurred_at = from_unix_timestamp!(to_int!(unix_time))
+} else {
+  .occurred_at = now()
+}
+'''
+
+[sinks.gateway]
+type = "http"
+inputs = ["flatten_osquery"]
+uri = "${BLACK_ONYX_COLLECTOR_GATEWAY_URL:-http://127.0.0.1:18090}/api/v1/ingest/host-state"
+method = "post"
+encoding.codec = "json"
+request.headers.X-API-Key = "${BLACK_ONYX_COLLECTOR_INGEST_KEY}"
+request.headers.X-Tenant-Id = "${BLACK_ONYX_COLLECTOR_TENANT_ID}"
+# NOTE: Prefer collectors/shipper (SHIPPER_SOURCES=osquery) gateway rejects
+# payloads that are missing schema_version / ULID event_id / source / asset.

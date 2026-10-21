@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/schemas/deployment_event.json",
+  "title": "DeploymentEvent",
+  "description": "Versioned deployment payload correlated with code and runtime findings.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_type",
+    "deployment_id",
+    "service_id",
+    "environment",
+    "status",
+    "completed_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "event_type": {
+      "enum": ["deployment.event", "deployment.completed", "deployment.failed"]
+    },
+    "deployment_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "service_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "environment": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "version": {
+      "type": ["string", "null"],
+      "maxLength": 128
+    },
+    "commit": {
+      "type": ["string", "null"],
+      "maxLength": 128
+    },
+    "started_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "enum": ["started", "succeeded", "failed", "rolled_back"]
+    },
+    "changed_assets": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      },
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": true
+}

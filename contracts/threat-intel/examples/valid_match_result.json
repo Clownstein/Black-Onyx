@@ -1,0 +1,15 @@
+{
+  "matches": [
+    {
+      "id": "ind-otx-1.2.3.4",
+      "type": "ipv4",
+      "value": "203.0.113.50",
+      "confidence": 90,
+      "source": "taxii-demo",
+      "tlp": "amber",
+      "mitre_techniques": ["T1071.001"]
+    }
+  ],
+  "campaigns": ["demo-campaign"],
+  "tlp": "amber"
+}

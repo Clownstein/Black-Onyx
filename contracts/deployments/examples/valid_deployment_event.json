@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "event_type": "deployment.event",
+  "deployment_id": "deploy-20260726-441",
+  "service_id": "payments-api",
+  "environment": "production",
+  "version": "payments-api:2.14.0",
+  "commit": "25d874c",
+  "started_at": "2026-07-26T20:25:00Z",
+  "completed_at": "2026-07-26T20:31:42Z",
+  "status": "succeeded",
+  "changed_assets": [
+    "host-payments-01",
+    "host-payments-02"
+  ]
+}

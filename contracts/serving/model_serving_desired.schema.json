@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/schemas/model_serving_desired.json",
+  "title": "ModelServingDesired",
+  "description": "GET /api/v1/serving/{model}/desired on training-orchestrator: the signed package each alias must serve.",
+  "type": "object",
+  "required": [
+    "tenant_id",
+    "model_name",
+    "aliases"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "tenant_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "model_name": {
+      "enum": [
+        "log-model",
+        "network-model",
+        "metrics-model",
+        "code-model"
+      ]
+    },
+    "aliases": {
+      "type": "object",
+      "propertyNames": {
+        "enum": [
+          "champion",
+          "canary",
+          "shadow"
+        ]
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["version", "signature", "generation", "removed"],
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "signature": {
+            "type": ["string", "null"],
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "removed": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

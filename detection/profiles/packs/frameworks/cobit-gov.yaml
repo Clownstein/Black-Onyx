@@ -1,0 +1,32 @@
+pack_id: cobit-gov
+kind: framework
+version: '2019'
+title: COBIT Governance Overlay
+extends_surfaces:
+- identity
+- cloud
+checks:
+- check_id: cobit.edm.objectives
+  title: IT security objectives cascade from strategy
+  surfaces:
+  - identity
+  automation: manual
+  severity_default: medium
+  evidence_types:
+  - attestation
+- check_id: cobit.mea.kpis
+  title: Security KPIs reported to leadership
+  surfaces:
+  - identity
+  automation: manual
+  severity_default: medium
+  evidence_types:
+  - attestation
+- check_id: cobit.apo.third-party
+  title: Third-party services in governance scope
+  surfaces:
+  - cloud
+  automation: manual
+  severity_default: medium
+  evidence_types:
+  - attestation

@@ -1,0 +1,40 @@
+{
+  "incident_id": "inc-01J3T5C0RB6GCYKAT1BFRX7A3Q",
+  "tenant_id": "tenant-acme",
+  "title": "Payments API contacted a new external peer after authentication change",
+  "status": "open",
+  "severity": "critical",
+  "risk_score": 0.96,
+  "category": ["suspicious_egress", "authentication_change"],
+  "first_seen": "2026-07-26T20:39:12Z",
+  "last_seen": "2026-07-26T20:45:00Z",
+  "assets": ["host-payments-03"],
+  "services": ["payments-api"],
+  "deployment_id": "deploy-20260726-441",
+  "commit": "25d874c",
+  "finding_ids": [],
+  "summary": "A newly deployed authentication change was followed by an unexpected privilege event, elevated errors, and first-seen outbound traffic.",
+  "evidence": [],
+  "assigned_to": null,
+  "disposition": null,
+  "models": [
+    "log-transformer",
+    "code-transformer",
+    "flow-transformer",
+    "metrics-transformer"
+  ],
+  "site_id": "site-hq",
+  "mitre_tactics": ["TA0011"],
+  "mitre_techniques": ["T1071.001"],
+  "mitre_confidence": 0.8,
+  "threat_intel": {
+    "matched_indicators": [],
+    "campaigns": [],
+    "tlp": null
+  },
+  "external_links": {
+    "thehive_case_id": null,
+    "grafana_explore_url": null,
+    "shuffle_workflow_id": null
+  }
+}

@@ -1,0 +1,193 @@
+# Enable inter-service TLS using certs from infrastructure/tls/generated.
+# Prerequisite: uv run python scripts/development/gen_internal_certs.py
+#
+#   docker compose -f docker-compose.yml -f docker-compose.platform.yml \
+#     -f docker-compose.detection-apps.yml \
+#     -f detection/infrastructure/docker-compose/docker-compose.mtls.yml up -d
+#
+# HTTP services mount server certs; clients trust ca.crt. Uvicorn SSL via command override.
+
+x-tls-vol: &tls-vol
+  type: bind
+  source: ../tls/generated
+  target: /tls
+  read_only: true
+
+services:
+  incident-api:
+    environment:
+      SSL_CERTFILE: /tls/incident-api.crt
+      SSL_KEYFILE: /tls/incident-api.key
+      SSL_CA_CERTS: /tls/ca.crt
+      MTLS_ENABLED: "true"
+    volumes:
+      - <<: *tls-vol
+    command:
+      [
+        "uvicorn",
+        "incident_api.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8083",
+        "--ssl-certfile",
+        "/tls/incident-api.crt",
+        "--ssl-keyfile",
+        "/tls/incident-api.key",
+        "--ssl-ca-certs",
+        "/tls/ca.crt",
+      ]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import ssl,urllib.request; ctx=ssl.create_default_context(cafile='/tls/ca.crt'); urllib.request.urlopen('https://127.0.0.1:8083/health/live', context=ctx)\"",
+        ]
+
+  asset-registry:
+    volumes:
+      - <<: *tls-vol
+    command:
+      [
+        "uvicorn",
+        "asset_registry.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8081",
+        "--ssl-certfile",
+        "/tls/asset-registry.crt",
+        "--ssl-keyfile",
+        "/tls/asset-registry.key",
+        "--ssl-ca-certs",
+        "/tls/ca.crt",
+      ]
+
+  correlation-engine:
+    environment:
+      CORRELATION_INCIDENT_API_URL: https://incident-api:8083
+      SSL_CA_CERTS: /tls/ca.crt
+      MTLS_ENABLED: "true"
+    volumes:
+      - <<: *tls-vol
+    command:
+      [
+        "uvicorn",
+        "correlation_engine.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8084",
+        "--ssl-certfile",
+        "/tls/correlation-engine.crt",
+        "--ssl-keyfile",
+        "/tls/correlation-engine.key",
+        "--ssl-ca-certs",
+        "/tls/ca.crt",
+      ]
+
+  model-gateway:
+    volumes:
+      - <<: *tls-vol
+    command:
+      [
+        "uvicorn",
+        "model_gateway.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8091",
+        "--ssl-certfile",
+        "/tls/model-gateway.crt",
+        "--ssl-keyfile",
+        "/tls/model-gateway.key",
+        "--ssl-ca-certs",
+        "/tls/ca.crt",
+      ]
+
+  notification-service:
+    volumes:
+      - <<: *tls-vol
+    command:
+      [
+        "uvicorn",
+        "notification_service.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8086",
+        "--ssl-certfile",
+        "/tls/notification-service.crt",
+        "--ssl-keyfile",
+        "/tls/notification-service.key",
+        "--ssl-ca-certs",
+        "/tls/ca.crt",
+      ]
+
+  threat-intel-service:
+    volumes:
+      - <<: *tls-vol
+    command:
+      [
+        "uvicorn",
+        "threat_intel_service.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8098",
+        "--ssl-certfile",
+        "/tls/threat-intel-service.crt",
+        "--ssl-keyfile",
+        "/tls/threat-intel-service.key",
+        "--ssl-ca-certs",
+        "/tls/ca.crt",
+      ]
+
+  inference-worker:
+    environment:
+      INFER_INCIDENT_API_URL: https://incident-api:8083
+      INFER_MODEL_GATEWAY_URL: https://model-gateway:8091
+      SSL_CA_CERTS: /tls/ca.crt
+    volumes:
+      - <<: *tls-vol
+
+  response-orchestrator:
+    volumes:
+      - <<: *tls-vol
+    command:
+      [
+        "uvicorn",
+        "response_orchestrator.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8111",
+        "--ssl-certfile",
+        "/tls/response-orchestrator.crt",
+        "--ssl-keyfile",
+        "/tls/response-orchestrator.key",
+        "--ssl-ca-certs",
+        "/tls/ca.crt",
+      ]
+
+  integration-hub:
+    environment:
+      INTEGRATION_HUB_INCIDENT_API_URL: https://incident-api:8083
+      SSL_CA_CERTS: /tls/ca.crt
+    volumes:
+      - <<: *tls-vol
+    command:
+      [
+        "uvicorn",
+        "integration_hub.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8105",
+        "--ssl-certfile",
+        "/tls/integration-hub.crt",
+        "--ssl-keyfile",
+        "/tls/integration-hub.key",
+        "--ssl-ca-certs",
+        "/tls/ca.crt",
+      ]

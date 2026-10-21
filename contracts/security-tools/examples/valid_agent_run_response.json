@@ -1,0 +1,30 @@
+{
+  "answer": "",
+  "rounds": 1,
+  "status": "pending_approval",
+  "tool_calls": [
+    {
+      "name": "Write",
+      "call_id": "c1",
+      "arguments": {
+        "path": "a.txt",
+        "content": "x"
+      }
+    }
+  ],
+  "tool_results": [],
+  "run_id": "r-abc123",
+  "pending_approval": {
+    "tool": "Write",
+    "call_id": "c1",
+    "arguments": {
+      "path": "a.txt",
+      "content": "x"
+    },
+    "session_id": "security-lab",
+    "timeout": 30,
+    "network_profile": "offline",
+    "destinations": [],
+    "preview_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  }
+}

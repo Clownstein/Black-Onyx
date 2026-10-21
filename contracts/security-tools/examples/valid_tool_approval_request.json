@@ -1,0 +1,9 @@
+{
+  "arguments": {
+    "path": "notes.txt",
+    "content": "hello"
+  },
+  "session_id": "security-lab",
+  "timeout": 120,
+  "preview_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+}

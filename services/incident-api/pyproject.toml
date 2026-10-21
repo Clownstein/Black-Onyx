@@ -1,0 +1,48 @@
+[project]
+name = "incident-api"
+version = "0.1.0"
+description = "Tenant-scoped incident API (Phase 0 skeleton)"
+requires-python = ">=3.12"
+dependencies = [
+  "black-onyx-contracts",
+  "black-onyx-otel",
+  "black-onyx-vector",
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "sqlalchemy>=2.0",
+  "psycopg[binary]>=3.2",
+  "alembic>=1.14",
+  "pydantic>=2.9",
+  "pydantic-settings>=2.6",
+  "python-ulid>=3.0",
+  "httpx>=0.27",
+  "aiokafka>=0.11",
+  "PyJWT[crypto]>=2.9",
+  "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "pytest-asyncio>=0.24",
+  "httpx>=0.27",
+]
+
+[project.scripts]
+incident-api = "incident_api.main:run"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["incident_api"]
+
+[tool.uv.sources]
+black-onyx-contracts = { path = "../../packages/black_onyx_contracts" }
+black-onyx-otel = { path = "../../packages/black_onyx_otel" }
+black-onyx-vector = { path = "../../packages/black_onyx_vector" }
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

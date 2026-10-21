@@ -1,0 +1,28 @@
+pack_id: surface-identity
+kind: surface
+version: '1.0'
+title: Identity Surface Checks
+extends_surfaces:
+- identity
+checks:
+- check_id: surface.identity.mfa-gaps
+  title: MFA gaps on privileged logins
+  surfaces:
+  - identity
+  automation: auto
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+  mitre_techniques:
+  - T1110
+  bindings:
+    detectors:
+    - sigma:failed_logon_burst
+- check_id: surface.identity.jml
+  title: Joiner mover leaver timeliness
+  surfaces:
+  - identity
+  automation: hybrid
+  severity_default: high
+  evidence_types:
+  - detector_hit

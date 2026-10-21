@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "event_id": "01J3T5C0RB6GCYKAT1BFRX7A3Q",
+  "event_type": "log.raw",
+  "tenant_id": "tenant-acme",
+  "site_id": "site-hq",
+  "occurred_at": "2026-07-26T20:41:02.123Z",
+  "ingested_at": "2026-07-26T20:41:03.004Z",
+  "source": {
+    "collector_id": "otel-prod-west-01",
+    "source_type": "opentelemetry"
+  },
+  "asset": {
+    "asset_id": "host-payments-03",
+    "service_id": "payments-api",
+    "environment": "production",
+    "region": "us-west-2"
+  },
+  "trace": {
+    "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+    "span_id": "00f067aa0ba902b7"
+  },
+  "labels": {
+    "team": "payments",
+    "cluster": "prod-west"
+  }
+}

@@ -1,0 +1,60 @@
+{{- if .Values.migrations.enabled }}
+{{- $root := . }}
+{{- $services := list
+  (dict "name" "asset-registry" "valueKey" "assetRegistry" "namespace" "application" "env" "ASSET_REGISTRY_DATABASE_URL" "secretKey" .Values.secrets.databaseKeys.assetRegistry)
+  (dict "name" "incident-api" "valueKey" "incidentApi" "namespace" "application" "env" "INCIDENT_API_DATABASE_URL" "secretKey" .Values.secrets.databaseKeys.incidentApi)
+  (dict "name" "integration-hub" "valueKey" "integrationHub" "namespace" "application" "env" "INTEGRATION_HUB_DATABASE_URL" "secretKey" .Values.secrets.databaseKeys.integrationHub)
+  (dict "name" "notification-service" "valueKey" "notificationService" "namespace" "application" "env" "NOTIFICATION_DATABASE_URL" "secretKey" .Values.secrets.databaseKeys.notificationService)
+  (dict "name" "response-orchestrator" "valueKey" "responseOrchestrator" "namespace" "application" "env" "RESPONSE_ORCHESTRATOR_DATABASE_URL" "secretKey" .Values.secrets.databaseKeys.responseOrchestrator)
+  (dict "name" "smoke-consumer" "namespace" "application" "env" "SMOKE_DATABASE_URL" "secretKey" .Values.secrets.databaseKeys.smokeConsumer "image" .Values.migrations.smokeConsumerImage)
+  (dict "name" "threat-intel-service" "valueKey" "threatIntelService" "namespace" "application" "env" "THREAT_INTEL_DATABASE_URL" "secretKey" .Values.secrets.databaseKeys.threatIntelService)
+  (dict "name" "training-orchestrator" "valueKey" "trainingOrchestrator" "namespace" "training" "env" "TRAINING_ORCHESTRATOR_DATABASE_URL" "secretKey" .Values.secrets.databaseKeys.trainingOrchestrator)
+  (dict "name" "black-onyx" "namespace" "application" "env" "BLACK_ONYX_DATABASE_URL" "secretKey" .Values.secrets.databaseKeys.blackOnyx "image" .Values.migrations.blackOnyxImage "workdir" "/app")
+  (dict "name" "security-gateway" "namespace" "application" "env" "SECURITY_GATEWAY_DATABASE_URL" "secretKey" .Values.secrets.databaseKeys.securityGateway "image" .Values.migrations.securityGatewayImage "workdir" "/app")
+}}
+{{- range $service := $services }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $service.name }}-migrate
+  namespace: {{ index $root.Values.namespaces $service.namespace }}
+  labels:
+    {{- include "black-onyx-detection.labels" $root | nindent 4 }}
+    app: {{ $service.name }}-migrate
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-10"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: {{ $root.Values.migrations.backoffLimit }}
+  ttlSecondsAfterFinished: {{ $root.Values.migrations.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        app: {{ $service.name }}-migrate
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: {{ $root.Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ $root.Values.securityContext.runAsUser }}
+      containers:
+        - name: migrate
+          image: {{ if hasKey $service "image" }}{{ $service.image }}{{ else }}{{ index $root.Values $service.valueKey "image" }}{{ end }}
+          imagePullPolicy: {{ $root.Values.global.imagePullPolicy }}
+          {{- if hasKey $service "workdir" }}
+          workingDir: {{ $service.workdir }}
+          {{- end }}
+          command: ["alembic", "upgrade", "head"]
+          env:
+            - name: {{ $service.env }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "secrets.name is required" $root.Values.secrets.name }}
+                  key: {{ required (printf "%s database secret key is required" $service.name) $service.secretKey }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+{{- end }}
+{{- end }}

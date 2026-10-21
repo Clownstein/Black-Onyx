@@ -1,0 +1,1 @@
+"""Log model inference service."""

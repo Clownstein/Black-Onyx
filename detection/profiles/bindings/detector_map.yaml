@@ -1,0 +1,57 @@
+version: '1.0'
+detectors:
+  port_scan_heuristic:
+  - cis.v8.13.network-monitor
+  - mitre.t1046
+  - surface.network.discovery
+  failed_connection_burst:
+  - mitre.t1046
+  - zt.network.east-west
+  beaconing_heuristic:
+  - cis.v8.13.network-monitor
+  - mitre.t1071
+  - surface.network.egress
+  new_external_peer:
+  - cis.v8.13.network-monitor
+  - mitre.t1071
+  - ccm.ivs.no-public-admin
+  sigma:failed_logon_burst:
+  - mitre.t1110
+  - nist.csf.protect.mfa
+  - surface.identity.mfa-gaps
+  sigma:rare_scheduled_task:
+  - mitre.t1053
+  - surface.host.persistence
+  rare_binary_path:
+  - mitre.t1547
+  - cis.v8.2.software-inventory
+  - cis.v8.10.malware
+  deny_spike:
+  - mitre.t1190
+  - cis.v8.ig2.waf
+  vuln_ingest:
+  - cis.v8.7.vuln-mgmt
+  - mitre.t1190
+  - pci.11.scans
+  log_source_silent:
+  - cis.v8.8.audit-log-management
+  - nist.csf.detect.logging
+  asset_registry_gap:
+  - cis.v8.1.asset-inventory
+  - nist.csf.identify.assets
+  unauthorized_device:
+  - cis.v8.1.asset-inventory
+  cross_zone_flow:
+  - pci.1.cde-segmentation
+  - zt.network.microseg
+  - nerc.esp.perimeter
+  tls_probe_weak:
+  - nist.csf.protect.tls
+  - pci.4.tls-chd
+  - surface.webapp.headers
+  suspicious_parent_child:
+  - mitre.t1059
+  sigma:proc_powershell_encoded:
+  - mitre.t1059
+  network-model:
+  - mitre.t1071

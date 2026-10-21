@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/schemas/threat_intel_indicator.json",
+  "title": "ThreatIntelIndicator",
+  "description": "Platform mirror of a STIX-like indicator / IOC.",
+  "type": "object",
+  "required": [
+    "indicator_id",
+    "observable_type",
+    "observable_value",
+    "source",
+    "confidence"
+  ],
+  "properties": {
+    "indicator_id": { "type": "string", "minLength": 1 },
+    "tenant_id": { "type": ["string", "null"] },
+    "observable_type": {
+      "type": "string",
+      "enum": ["ipv4", "ipv6", "domain", "url", "file_hash", "email", "ja3", "cve"]
+    },
+    "observable_value": { "type": "string", "minLength": 1 },
+    "pattern": { "type": ["string", "null"] },
+    "source": { "type": "string", "minLength": 1 },
+    "confidence": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "tlp": {
+      "type": ["string", "null"],
+      "enum": ["white", "green", "amber", "red", "clear", null]
+    },
+    "valid_from": { "type": ["string", "null"], "format": "date-time" },
+    "valid_until": { "type": ["string", "null"], "format": "date-time" },
+    "labels": { "type": "array", "items": { "type": "string" } },
+    "campaigns": { "type": "array", "items": { "type": "string" } },
+    "mitre_techniques": { "type": "array", "items": { "type": "string" } },
+    "external_refs": { "type": "array", "items": { "type": "object" } },
+    "raw_stix": { "type": "object" }
+  },
+  "additionalProperties": true
+}

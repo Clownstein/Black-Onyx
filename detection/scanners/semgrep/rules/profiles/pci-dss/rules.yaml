@@ -1,0 +1,47 @@
+rules:
+  - id: pci-dss-eval-on-payment-data
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Dynamic evaluation in code that handles cardholder data risks injection
+      and violates PCI DSS 6.2.4 secure coding requirements.
+    metadata:
+      profile: pci-dss
+      category: security
+      cwe: "CWE-95"
+      pci_dss: "6.2.4"
+    patterns:
+      - pattern: eval(...)
+
+  - id: pci-dss-logging-card-number
+    languages: [python]
+    severity: WARNING
+    message: >-
+      Logging a variable named like a PAN / card number can persist sensitive
+      authentication data. PCI DSS 3.3/3.4 forbid storing full PAN in logs.
+    metadata:
+      profile: pci-dss
+      category: security
+      cwe: "CWE-532"
+      pci_dss: "3.3"
+    patterns:
+      - pattern-either:
+          - pattern: logging.$METHOD(..., $CARD, ...)
+          - pattern: logger.$METHOD(..., $CARD, ...)
+      - metavariable-regex:
+          metavariable: $CARD
+          regex: (?i).*(pan|card_number|cardnumber|cvv|cvc).*
+
+  - id: pci-dss-hardcoded-track-data
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Hardcoded primary account number (PAN) literal. Never embed cardholder
+      data in source (PCI DSS 3.2).
+    metadata:
+      profile: pci-dss
+      category: security
+      cwe: "CWE-798"
+      pci_dss: "3.2"
+    patterns:
+      - pattern: $PAN = "=..."

@@ -1,0 +1,16 @@
+{
+  "event_type": "firewall.traffic",
+  "tenant_id": "tenant-acme",
+  "asset_id": "fw-edge-01",
+  "occurred_at": "2026-07-26T20:41:02.123Z",
+  "vendor": "pfsense",
+  "action": "deny",
+  "src_ip": "203.0.113.50",
+  "dst_ip": "10.0.1.20",
+  "src_port": 44321,
+  "dst_port": 22,
+  "protocol": "tcp",
+  "rule_id": "block-wan-ssh",
+  "interface": "wan",
+  "message": "Default deny WAN SSH"
+}

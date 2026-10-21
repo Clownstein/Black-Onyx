@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://black-onyx.local/schemas/tool_execution_request.json",
+  "title": "ToolExecutionRequest",
+  "description": "POST /v1/tools/{tool} on security-gateway (via BFF /api/v1/security/tools/{tool}). Non-read tiers require approval_id from /approve for this exact request.",
+  "type": "object",
+  "properties": {
+    "arguments": {
+      "type": "object"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"
+    },
+    "timeout": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 300
+    },
+    "network_profile": {
+      "type": "string",
+      "enum": ["offline", "lab", "public"],
+      "default": "offline",
+      "description": "Network access level. lab/public require SECURITY_EGRESS_NETWORK and matching ALLOW_*_TARGETS flags."
+    },
+    "destinations": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "string",
+        "maxLength": 255
+      },
+      "description": "Hostnames or public IPs the sandbox may reach. Required when network_profile is not offline. Private/reserved addresses, wildcards, and local TLDs are rejected."
+    },
+    "approval_id": {
+      "type": "string",
+      "maxLength": 128
+    }
+  }
+}

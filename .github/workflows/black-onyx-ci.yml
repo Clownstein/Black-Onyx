@@ -1,0 +1,491 @@
+name: black-onyx-ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 4 * * *"
+permissions:
+  contents: read
+jobs:
+  tip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - run: uv sync --extra dev
+      - run: uv run --no-sync pytest tests -q
+      - name: black-onyx-tools package tests
+        working-directory: black-onyx-tools
+        run: |
+          uv sync --extra dev
+          uv run --no-sync black-onyx-tool-train validate
+          uv run --no-sync black-onyx-tool-train export --format openai --out-dir datasets/tool_use/build/ci
+          uv run --no-sync black-onyx-tool-train train --dry-run
+          uv run --no-sync pytest -q
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "26"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
+      - run: npm test -- --run
+        working-directory: web
+      - run: npm run lint -- --max-warnings=0
+        working-directory: web
+      - run: npm run build
+        working-directory: web
+      - name: Install Playwright Chromium
+        run: node node_modules/playwright/cli.js install --with-deps chromium
+        working-directory: web
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright-browsers
+      - name: Browser acceptance
+        run: npm run test:e2e
+        working-directory: web
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright-browsers
+
+  detection-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - name: Shared package import smoke
+        # The runner's system Python is externally managed (PEP 668), so
+        # `uv pip install --system` is refused. Install into a venv instead.
+        run: |
+          uv venv
+          uv pip install ./packages/black_onyx_contracts ./packages/black_onyx_otel ./packages/black_onyx_vector ./packages/black_onyx_calibration
+          uv run python -c "import black_onyx_contracts, black_onyx_otel, black_onyx_vector, black_onyx_calibration; print('ok')"
+      - name: Contract tests
+        working-directory: detection
+        run: |
+          uv sync --extra dev
+          uv run --no-sync pytest tests/contract -q
+      - name: Purple-team scorer tests
+        working-directory: detection
+        run: uv run --no-sync pytest tests/integration/test_purple_team_scoring.py -q
+      - name: Model-gateway canary/golden routing tests
+        working-directory: detection
+        run: |
+          uv run --no-sync pytest \
+            tests/integration/test_model_gateway_canary.py \
+            tests/integration/test_model_gateway_promotion.py \
+            tests/integration/test_model_gateway_golden.py -q
+      - name: Detection modality model unit tests
+        run: |
+          set -euo pipefail
+          for model in log-model network-model metrics-model code-model host-state-model malware-static; do
+            echo "::group::${model}"
+            cd "${GITHUB_WORKSPACE}/detection/models/${model}"
+            uv sync --extra dev
+            uv run --no-sync pytest -q
+            echo "::endgroup::"
+          done
+        working-directory: .
+      - name: Detection security tests
+        # XSS/webhook: detection meta-package. RBAC/tenant: incident-api venv + PYTHONPATH.
+        run: |
+          set -euo pipefail
+          cd "${GITHUB_WORKSPACE}/detection"
+          uv sync --extra dev
+          uv run --no-sync pytest tests/security/test_xss_escape.py tests/security/test_webhook_signature.py -q
+          cd "${GITHUB_WORKSPACE}/services/incident-api"
+          uv sync --extra dev
+          export PYTHONPATH="${GITHUB_WORKSPACE}/services/incident-api"
+          # incident-api conftest sets OIDC_DISABLED for unit suites; security tests set it explicitly too.
+          uv run --no-sync pytest \
+            "${GITHUB_WORKSPACE}/detection/tests/security/test_tenant_isolation.py" \
+            "${GITHUB_WORKSPACE}/detection/tests/security/test_rbac.py" -q
+        working-directory: .
+      - name: Package unit tests (black_onyx_vector)
+        working-directory: packages/black_onyx_vector
+        run: |
+          uv sync --extra dev
+          uv run --no-sync pytest -q
+      # Signed package build/verify plus alias serving and replica sync.
+      - name: Package unit tests (black_onyx_model_package)
+        working-directory: packages/black_onyx_model_package
+        run: |
+          uv sync --extra dev
+          uv run --no-sync pytest -q
+      - name: Package unit tests (black_onyx_calibration)
+        working-directory: packages/black_onyx_calibration
+        run: |
+          uv sync --extra dev
+          uv run --no-sync pytest -q
+      # black_onyx_sandbox holds the archive, SSRF and redaction guards and had
+      # tests but no CI job, so nothing ran them.
+      - name: Package unit tests (black_onyx_sandbox)
+        working-directory: packages/black_onyx_sandbox
+        run: |
+          uv sync --extra dev
+          uv run --no-sync pytest -q
+
+  detection-services:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - asset-registry
+          - code-enrichment-worker
+          - code-processor
+          - correlation-engine
+          - embedding-worker
+          - firewall-processor
+          - flow-processor
+          - host-state-processor
+          - ids-processor
+          - incident-api
+          - inference-worker
+          - integration-hub
+          - log-processor
+          - malware-orchestrator
+          - malware-processor
+          - malware-triage
+          - metrics-processor
+          - model-gateway
+          - notification-service
+          - profile-evaluator
+          - response-orchestrator
+          # security-runner owns Docker sandbox isolation; its tests are the
+          # only guard on the execute endpoint and were never in this matrix.
+          - security-runner
+          - threat-intel-service
+          - training-orchestrator
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - name: Service unit tests
+        working-directory: services/${{ matrix.service }}
+        run: |
+          uv sync --extra dev
+          uv run --no-sync pytest -q
+
+  migration-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Mirrored migrations are identical
+        shell: bash
+        run: |
+          for service in asset-registry incident-api integration-hub notification-service response-orchestrator smoke-consumer threat-intel-service training-orchestrator; do
+            diff -ru "services/$service/alembic/versions" "deploy/detection/migrations/$service" \
+              --exclude AGENTS.md --exclude __pycache__
+          done
+
+  model-migration-drift:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - asset-registry
+          - incident-api
+          - integration-hub
+          - notification-service
+          - response-orchestrator
+          - smoke-consumer
+          - threat-intel-service
+          - training-orchestrator
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - name: Alembic head matches SQLAlchemy metadata
+        working-directory: services/${{ matrix.service }}
+        run: |
+          uv sync
+          uv run python ../../detection/scripts/development/check_migration_parity.py --service .
+
+  ingestion-gateway:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/ingestion-gateway
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.25.x"
+      - run: go test ./...
+
+  compose-and-helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Docker Compose config (platform overlays)
+        # docker-compose.yml deliberately hard-requires BLACK_ONYX_AUTH_SECRET
+        # (`:?`) so a real deployment cannot start without one. Config validation
+        # only needs *a* value, so supply an obviously-fake one here rather than
+        # weakening that guard.
+        env:
+          BLACK_ONYX_AUTH_SECRET: ci-compose-validation-only-not-a-real-secret
+          API_KEYS: ci-ingest-key-not-a-real-secret
+          BLACK_ONYX_EXTERNAL_URL: https://ci.example.test
+          BLACK_ONYX_ALLOWED_HOSTS: '["ci.example.test"]'
+          BLACK_ONYX_HOSTNAME: ci.example.test
+          BLACK_ONYX_DETECTION_TENANT: ci-render-only-tenant
+          PROCESSOR_API_KEY: ci-render-only-processors-key
+          INCIDENT_API_SERVICE_KEY: ci-render-only-incident-key
+          THREAT_INTEL_SERVICE_API_KEY: ci-render-only-threat-intel-key
+          CODE_ENRICHMENT_API_KEY: ci-render-only-enrichment-key
+          PROFILE_EVALUATOR_API_KEY: ci-render-only-profile-key
+          TRAINING_ARTIFACT_SIGNING_KEY: ci-render-only-signing-key
+          ASSET_REGISTRY_SERVICE_KEY: ci-render-only-asset-registry-key
+          SELF_MONITOR_TENANT_ID: ci-render-only-tenant
+        run: |
+          base=( -f docker-compose.yml -f docker-compose.platform.yml )
+          apps=( "${base[@]}" -f docker-compose.detection-apps.yml )
+          docker compose "${base[@]}" config >/dev/null
+          docker compose "${base[@]}" -f docker-compose.detection-core.yml config >/dev/null
+          docker compose "${base[@]}" -f docker-compose.detection-core.yml -f docker-compose.detection-lab-ports.yml config >/dev/null
+          docker compose "${apps[@]}" config >/dev/null
+          docker compose "${base[@]}" -f docker-compose.detection-core.yml -f docker-compose.detection-apps.yml -f docker-compose.self-monitor.yml config >/dev/null
+          docker compose "${apps[@]}" -f detection/infrastructure/docker-compose/docker-compose.observability.yml config >/dev/null
+          docker compose "${apps[@]}" -f detection/infrastructure/docker-compose/docker-compose.otel.yml config >/dev/null
+          docker compose "${base[@]}" -f docker-compose.production.yml config >/dev/null
+          docker compose "${apps[@]}" -f docker-compose.production.yml -f docker-compose.production-detection.yml config >/dev/null
+          docker compose "${apps[@]}" -f docker-compose.detection-lab-dev.yml config >/dev/null
+      - uses: azure/setup-helm@v5
+        with:
+          version: v3.16.3
+      - name: Helm lint
+        run: helm lint deploy/detection/helm/black-onyx-detection/
+      - name: Helm template (every documented profile)
+        # The chart requires an OIDC profile: values.yaml ships issuer/audience/
+        # jwksUrl empty and the templates `required` them, so a bare render and a
+        # standalone `-f values-airgap.yaml` both fail by design. This step used
+        # to run exactly those two, so the job was red and Helm had no working
+        # validation. These are the three combinations README.md documents.
+        run: |
+          chart=deploy/detection/helm/black-onyx-detection
+          mkdir -p "${RUNNER_TEMP}/helm"
+          helm template black-onyx-detection "$chart" \
+            -f "$chart/values.yaml" -f "$chart/values-dev.yaml" > "${RUNNER_TEMP}/helm/dev.yaml"
+          helm template black-onyx-detection "$chart" \
+            -f "$chart/values.yaml" -f "$chart/values-prod.yaml" > "${RUNNER_TEMP}/helm/prod.yaml"
+          helm template black-onyx-detection "$chart" \
+            -f "$chart/values.yaml" -f "$chart/values-prod.yaml" -f "$chart/values-airgap.yaml" \
+            > "${RUNNER_TEMP}/helm/airgap.yaml"
+      - name: Rendered manifests are valid Kubernetes
+        # `helm template` only proves the templates execute. This validates the
+        # output against the real API schemas, so a misspelled field or a wrong
+        # type fails here instead of at `kubectl apply` time.
+        run: |
+          docker run --rm -v "${RUNNER_TEMP}/helm:/manifests:ro" \
+            ghcr.io/yannh/kubeconform:v0.6.7 \
+            -strict -summary -output text \
+            /manifests/dev.yaml /manifests/prod.yaml /manifests/airgap.yaml
+
+  detection-runtime-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      BLACK_ONYX_AUTH_SECRET: ci-runtime-smoke-only-not-a-real-secret
+      API_KEYS: ci-runtime-ingest-key
+      INCIDENT_API_SERVICE_KEY: ci-runtime-incident-key
+      ASSET_REGISTRY_SERVICE_KEY: ci-runtime-asset-key
+      POSTGRES_PASSWORD: ci-runtime-postgres-password
+      ALLOW_DEMO_KEYS: "false"
+      BLACK_ONYX_DETECTION_TENANT: ci-detection-runtime
+    steps:
+      - uses: actions/checkout@v7
+      - name: Start hermetic core detection stack
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.platform.yml -f docker-compose.detection-core.yml \
+            up -d --build --wait --wait-timeout 240 \
+            postgres redpanda redpanda-init ingestion-gateway smoke-consumer incident-api asset-registry
+      - name: Verify private-network ingest and registry write
+        shell: pwsh
+        run: ./scripts/smoke_detection_infra.ps1 -RequireStack
+      - name: Collect runtime logs
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.platform.yml -f docker-compose.detection-core.yml logs --no-color
+      - name: Tear down runtime stack
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.platform.yml -f docker-compose.detection-core.yml down -v --remove-orphans
+
+  security-runner-container-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build locked toolbox and firewall guard images
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -a
+          source services/security-runner/toolbox-build.env
+          set +a
+          docker build --pull=false -f services/security-runner/toolbox.Dockerfile \
+            --build-arg TOOLBOX_BASE_IMAGE="$TOOLBOX_BASE_IMAGE" \
+            --build-arg DEBIAN_SNAPSHOT="$DEBIAN_SNAPSHOT" \
+            --build-arg DEBIAN_SUITE="$TOOLBOX_DEBIAN_SUITE" \
+            --build-arg GOBUSTER_DEBIAN_VERSION="$GOBUSTER_DEBIAN_VERSION" \
+            --build-arg FOUNDRY_VERSION="$FOUNDRY_VERSION" \
+            --build-arg FOUNDRY_SHA256="$FOUNDRY_SHA256" \
+            --build-arg SOLC_DOWNLOAD_URL="$SOLC_DOWNLOAD_URL" \
+            --build-arg SOLC_SHA256="$SOLC_SHA256" \
+            --build-arg NIKTO_VERSION="$NIKTO_VERSION" \
+            --build-arg NIKTO_SHA256="$NIKTO_SHA256" \
+            --build-arg FILEBYTES_VERSION="$FILEBYTES_VERSION" \
+            --build-arg FILEBYTES_SHA256="$FILEBYTES_SHA256" \
+            -t blackonyx-security-toolbox:ci .
+          docker build --pull=false -f services/security-runner/guard.Dockerfile \
+            --build-arg GUARD_BASE_IMAGE="$GUARD_BASE_IMAGE" \
+            --build-arg DEBIAN_SNAPSHOT="$DEBIAN_SNAPSHOT" \
+            --build-arg DEBIAN_SUITE="$GUARD_DEBIAN_SUITE" \
+            -t blackonyx-security-guard:ci .
+      - name: Verify toolbox and guard offline startup
+        run: |
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges:true \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m --user 10001:10001 \
+            --entrypoint python3 blackonyx-security-toolbox:ci \
+            /usr/share/blackonyx/toolbox_smoke.py
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges:true --entrypoint /bin/sh \
+            blackonyx-security-guard:ci -ec \
+            'command -v nft && command -v tcpdump && command -v timeout'
+      - name: Verify real runner sandbox execution and cleanup
+        run: python3 scripts/smoke_security_runner_container.py
+      - name: Build final security gateway image
+        run: docker build -f services/security-gateway/Dockerfile -t blackonyx-security-gateway:ci .
+      - name: Serve gateway and verify durable single-use approval
+        run: python3 scripts/smoke_security_gateway_image.py blackonyx-security-gateway:ci
+      - name: Scan final security images without Docker socket access
+        run: |
+          docker save -o "${RUNNER_TEMP}/security-toolbox.tar" blackonyx-security-toolbox:ci
+          docker save -o "${RUNNER_TEMP}/security-guard.tar" blackonyx-security-guard:ci
+          docker save -o "${RUNNER_TEMP}/security-runner.tar" blackonyx-security-runner:container-smoke
+          docker save -o "${RUNNER_TEMP}/security-gateway.tar" blackonyx-security-gateway:ci
+          for image in security-toolbox security-guard security-runner security-gateway; do
+            docker run --rm -v "${RUNNER_TEMP}:/scan:ro" aquasec/trivy:0.69.3 \
+              image --input "/scan/${image}.tar" --scanners vuln,secret,misconfig \
+              --severity HIGH,CRITICAL --exit-code 1 --no-progress
+          done
+
+  code-model-final-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build final code-model image
+        run: docker build -f detection/models/code-model/Dockerfile -t blackonyx-code-model:ci .
+      - name: Serve a signed package from the final image
+        run: python3 scripts/smoke_code_model_image.py blackonyx-code-model:ci
+      - name: Scan the final image without Docker socket access
+        run: |
+          docker save -o "${RUNNER_TEMP}/code-model.tar" blackonyx-code-model:ci
+          docker run --rm -v "${RUNNER_TEMP}:/scan:ro" aquasec/trivy:0.69.3 \
+            image --input /scan/code-model.tar --scanners vuln \
+            --severity HIGH,CRITICAL --exit-code 1 --no-progress
+
+  primary-final-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+      # uv installs torch and the CUDA wheels as multi-gigabyte copies. A stock
+      # runner can already be full enough that the job dies before it can log.
+      - name: Free disk space for the CUDA wheel install
+        run: |
+          df -h /
+          sudo rm -rf \
+            /usr/share/dotnet \
+            /usr/local/lib/android \
+            /usr/local/share/boost \
+            /usr/local/.ghcup \
+            /usr/share/swift \
+            /opt/ghc \
+            /opt/hostedtoolcache
+          sudo apt-get clean
+          docker system prune -af || true
+          df -h /
+      - name: Build primary final image
+        run: docker build -f Dockerfile -t blackonyx-app:ci .
+      - name: Smoke native imports, OCR and writable directories
+        run: |
+          docker run --rm --network none --entrypoint /app/.venv/bin/python blackonyx-app:ci -c \
+            "import ctypes,os,sqlite3,ssl,pwd,pytesseract,torch; assert pwd.getpwuid(10001).pw_name == 'app'; [ctypes.CDLL(lib) for lib in ('libGL.so.1','libglib-2.0.so.0','libgomp.so.1')]; paths=('/app/data','/app/.checkpoints','/app/.cache'); assert all(os.access(path,os.W_OK) for path in paths); assert 'eng' in pytesseract.get_languages(config='')"
+          docker run --rm --network none --entrypoint /app/.venv/bin/black-onyx blackonyx-app:ci --help >/dev/null
+      - name: Scan primary final image without Docker socket access
+        run: |
+          docker save -o "${RUNNER_TEMP}/blackonyx-app.tar" blackonyx-app:ci
+          docker run --rm -v "${RUNNER_TEMP}:/scan:ro" aquasec/trivy:0.69.3 \
+            image --input /scan/blackonyx-app.tar --scanners vuln \
+            --severity HIGH,CRITICAL --exit-code 1 --timeout 45m --no-progress
+
+  ingestion-gateway-final-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build static Go final image
+        run: docker build -f services/ingestion-gateway/Dockerfile -t blackonyx-ingestion-gateway:ci .
+      - name: Smoke gateway liveness in the final image
+        run: |
+          docker run -d --name ingestion-gateway-smoke --network none \
+            -e KAFKA_BROKERS=127.0.0.1:9092 \
+            -e MINIO_ENDPOINT=http://127.0.0.1:9001 \
+            -e MINIO_ACCESS_KEY=ci-only -e MINIO_SECRET_KEY=ci-only-secret \
+            blackonyx-ingestion-gateway:ci
+          trap 'docker rm -f ingestion-gateway-smoke >/dev/null 2>&1 || true' EXIT
+          for attempt in $(seq 1 20); do
+            if docker exec ingestion-gateway-smoke /wget -q -O /dev/null http://127.0.0.1:8080/health/live; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs ingestion-gateway-smoke
+          exit 1
+      - name: Scan static Go final image without Docker socket access
+        run: |
+          docker save -o "${RUNNER_TEMP}/ingestion-gateway.tar" blackonyx-ingestion-gateway:ci
+          docker run --rm -v "${RUNNER_TEMP}:/scan:ro" aquasec/trivy:0.69.3 \
+            image --input /scan/ingestion-gateway.tar --scanners vuln \
+            --severity HIGH,CRITICAL --exit-code 1 --no-progress
+
+  detection-final-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        name:
+          - asset-registry
+          - code-enrichment-worker
+          - code-processor
+          - correlation-engine
+          - embedding-worker
+          - firewall-processor
+          - flow-processor
+          - host-state-processor
+          - ids-processor
+          - incident-api
+          - inference-worker
+          - integration-hub
+          - log-processor
+          - malware-orchestrator
+          - malware-processor
+          - malware-triage
+          - metrics-processor
+          - model-gateway
+          - notification-service
+          - profile-evaluator
+          - response-orchestrator
+          - smoke-consumer
+          - threat-intel-service
+          - training-orchestrator
+          - host-state-model
+          - log-model
+          - metrics-model
+          - network-model
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build, import-smoke, and scan final image
+        run: python3 scripts/verify_detection_final_image.py "${{ matrix.name }}"

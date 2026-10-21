@@ -1,0 +1,25 @@
+<!--
+  Add inside <ossec_config> on the Wazuh manager (/var/ossec/etc/ossec.conf),
+  then restart: systemctl restart wazuh-manager
+
+  Only needed when the integrator pushes alerts. With the shipper's own push
+  (SHIPPER_WAZUH_PUSH=true, the default) leave the integration out.
+-->
+<integration>
+  <name>custom-blackonyx</name>
+  <hook_url>https://blackonyx.example.com/api/v1/connectors/CONNECTOR_ID/push</hook_url>
+  <api_key>CONNECTOR_PUSH_TOKEN</api_key>
+  <level>7</level>
+  <alert_format>json</alert_format>
+</integration>
+
+<!--
+  Suricata on the same host: let the shipper read eve.json directly. If Wazuh
+  also reads eve.json (<localfile> with log_format json), the shipper drops
+  those suricata/ids-group alerts so they are not filed twice.
+
+  Isolation: the Black Onyx playbook calls the API with "!black-onyx-isolate"
+  (Linux) or "!black-onyx-isolate.cmd" (Windows), so no <command> or
+  <active-response> block is required. Install the scripts on agents from
+  detection/collectors/wazuh/active-response/.
+-->

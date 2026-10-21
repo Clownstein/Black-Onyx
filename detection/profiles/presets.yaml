@@ -1,0 +1,79 @@
+presets:
+- id: baseline-smb
+  title: Baseline SMB
+  selected_packs:
+  - nist-csf-2
+  - cis-v8-ig1
+  enabled_surfaces:
+  - network
+  - host
+  - identity
+- id: saas-product
+  title: SaaS product
+  selected_packs:
+  - soc2-security
+  - iso-27001
+  - cis-v8-ig1
+  - saas-trust
+  - mitre-attack-core
+  enabled_surfaces:
+  - webapp
+  - cloud
+  - identity
+  - network
+  - code
+- id: payment-merchant
+  title: Payment merchant
+  selected_packs:
+  - pci-dss-4
+  - cis-v8-ig2
+  - pci-merchant
+  - surface-webapp
+  enabled_surfaces:
+  - network
+  - webapp
+  - host
+- id: healthcare
+  title: Healthcare
+  selected_packs:
+  - hipaa
+  - nist-csf-2
+  - cis-v8-ig1
+  enabled_surfaces:
+  - host
+  - identity
+  - network
+  - webapp
+- id: dod-l2
+  title: DoD contractor L2
+  selected_packs:
+  - cmmc-l2
+  - nist-800-53-mod
+  - zero-trust
+  enabled_surfaces:
+  - host
+  - identity
+  - network
+  - cloud
+- id: electric-utility
+  title: Electric utility
+  selected_packs:
+  - nerc-cip
+  - zero-trust
+  - cis-v8-ig2
+  enabled_surfaces:
+  - network
+  - host
+- id: threat-informed-soc
+  title: Threat-informed SOC
+  selected_packs:
+  - mitre-attack-core
+  - nist-csf-2
+  - cis-v8-ig2
+  enabled_surfaces:
+  - network
+  - host
+  - webapp
+  - identity
+  - cloud
+  - code

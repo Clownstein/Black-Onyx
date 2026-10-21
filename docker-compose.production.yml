@@ -1,0 +1,74 @@
+services:
+  qdrant:
+    ports: !reset []
+    networks: [backend]
+
+  web:
+    ports: !reset []
+    environment:
+      QDRANT_SECURITY__PRODUCTION: "true"
+      QDRANT_SECURITY__SECURE_COOKIES: "true"
+      QDRANT_SECURITY__EXTERNAL_URL: ${BLACK_ONYX_EXTERNAL_URL:?Set an HTTPS external URL}
+      QDRANT_SECURITY__ALLOWED_HOSTS: ${BLACK_ONYX_ALLOWED_HOSTS:?Set a JSON host list}
+      QDRANT_SECURITY__TRUSTED_PROXIES: '["172.16.0.0/12"]'
+      BLACK_ONYX_DATABASE_URL: ${BLACK_ONYX_DATABASE_URL:?Set BLACK_ONYX_DATABASE_URL}
+    # Detection services sit on the internal default network; the BFF joins
+    # it to reach their APIs and reaches the internet through proxy.
+    networks: [backend, default, proxy]
+
+  security-gateway:
+    environment:
+      SECURITY_GATEWAY_DATABASE_URL: ${SECURITY_GATEWAY_DATABASE_URL:?Set SECURITY_GATEWAY_DATABASE_URL}
+
+  # Data stores are reachable only on the internal default network.
+  postgres:
+    ports: !reset []
+  redis:
+    ports: !reset []
+  redpanda:
+    ports: !reset []
+  opensearch:
+    ports: !reset []
+  minio:
+    ports: !reset []
+  mlflow:
+    ports: !reset []
+
+  # Only services with a real outbound dependency join the egress network.
+  searxng:
+    ports: !reset []
+    networks: [default, egress]
+  # Detection apps that need egress are attached in
+  # docker-compose.production-detection.yml (layer it after detection-apps).
+
+  caddy:
+    image: caddy:2.11.4-alpine
+    depends_on:
+      web:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      BLACK_ONYX_HOSTNAME: ${BLACK_ONYX_HOSTNAME:?Set the public hostname}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [proxy]
+    restart: unless-stopped
+
+networks:
+  # No route off-host: detection services cannot reach or be reached from
+  # outside except through the BFF (proxy) or the explicit egress network.
+  default:
+    internal: true
+  backend:
+    internal: true
+  proxy:
+  egress:
+
+volumes:
+  caddy_data:
+  caddy_config:

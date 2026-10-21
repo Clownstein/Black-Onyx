@@ -1,0 +1,371 @@
+# Security tooling overlay (model-tools integration).
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.security-tools.yml up -d
+#
+# Adds:
+#   - llama-server:     llama.cpp OpenAI-compatible server serving Black-Onyx-5B GGUF
+#   - vllm-antares:     vLLM serving antares-1b (vulnerability-localization model)
+#   - tool-router:      llama.cpp serving FunctionGemma 270M (optional tool routing)
+#   - security-gateway: FastAPI gateway for security tool dispatch + agent loop
+#   - security-runner:  Docker-owning authenticated runner (ephemeral containers)
+#
+# Does NOT start a second Qdrant uses the existing `qdrant` service.
+# The security-gateway sits on black-onyx-internal (talks to the web BFF,
+# never to the browser directly). The security-runner sits on
+# black-onyx-runner (internal-only, talks to the gateway only).
+#
+# Required environment (set in .env):
+#   SECURITY_GATEWAY_KEY 32+ character signing key shared by BFF and gateway
+#   SECURITY_RUNNER_TOKEN bearer key shared by gateway and runner
+#   SECURITY_SANDBOX_IMAGE digest-pinned sandbox image (sha256:...)
+#   SECURITY_SESSIONS_HOST_ROOT absolute host directory for session workspaces
+#
+# Optional gates (default false):
+#   ENABLE_BASH_TOOL, ENABLE_HYDRA, ENABLE_TCPDUMP, ENABLE_CAST_SEND,
+#   SQLMAP_EXPLOIT_MODE, ALLOW_PRIVATE_TARGETS, ALLOW_PUBLIC_TARGETS
+
+services:
+  # Migration jobs reuse the CLI image and need read-only access to legacy
+  # gateway SQLite state during the one-time Postgres cutover.
+  cli:
+    volumes:
+      - security_approvals:/app/security-state:ro
+
+  # ── llama.cpp inference server (Black-Onyx-5B Q8_0 GGUF) ─────────────────
+  # Serves the Black Onyx 5B cybersecurity fine-tune of Gemma 4 E2B via an
+  # OpenAI-compatible API on port 8081 (internal only). The security-gateway
+  # connects to LLM_BASE_URL=http://llama-server:8081 to drive the agent loop.
+  # The mmproj projector is mounted for optional multimodal (vision) input.
+  llama-server:
+    # CUDA image by default. On a host with no NVIDIA runtime, apply
+    # docker-compose.host.yml last (CPU image + ngl 0) and drop the GPU
+    # reservation, or set LLAMA_SERVER_IMAGE=ghcr.io/ggml-org/llama.cpp:server
+    # and LLAMA_N_GPU_LAYERS=0 yourself.
+    image: ${LLAMA_SERVER_IMAGE:-ghcr.io/ggml-org/llama.cpp:server-cuda}
+    container_name: blackonyx-llama-server
+    volumes:
+      - ${BLACK_ONYX_5B_DIR:-./models/Black-Onyx-5B}:/models:ro
+    command:
+      - "-m"
+      - "/models/${BLACK_ONYX_5B_FILE:-Black-Onyx-5B-Q8_0.gguf}"
+      - "-a"
+      - "${LLM_MODEL_NAME:-Black-Onyx-5B:Q8_0}"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8081"
+      - "-c"
+      - "${LLAMA_CTX:-131072}"
+      - "-np"
+      - "1"
+      - "-ngl"
+      - "${LLAMA_N_GPU_LAYERS:-99}"
+      - "--jinja"
+      # Multimodal projector for vision input (screenshots, diagrams, etc.)
+      - "--mmproj"
+      - "/models/${BLACK_ONYX_5B_MMPROJ:-Black-Onyx-5B-mmproj.gguf}"
+      # Use the GGUF-embedded Gemma 4 chat template (do not pass --chat-template).
+      # The archived model-tools entrypoint only overrides the template when
+      # LLAMA_CHAT_TEMPLATE is explicitly set; the embedded template is correct.
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - default
+      - black-onyx-runner
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python3 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/health')\" 2>/dev/null || curl -sf http://127.0.0.1:8081/health || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
+
+  # ── vLLM inference server (Antares-1B vulnerability-localization) ─────────
+  # Serves the Cisco Foundation AI Antares-1B (IBM Granite 4.0 1B) safetensors
+  # checkpoint via an OpenAI-compatible API on port 8000 (internal only).
+  # The code-enrichment-worker connects to ANTARES_ENDPOINT=http://vllm-antares:8000
+  # to run the Antares CLI tool query/sweep loop for CWE → file localization.
+  # This is a completions endpoint, NOT a streaming modality scorer.
+  #
+  # GPU sizing. vLLM shares one GPU with llama-server (and tool-router and the
+  # web container's embedding models), so it must not claim VRAM by fraction:
+  # the previous `--gpu-memory-utilization 0.85` reserved 13.6 of 16 GiB and
+  # left 2.4 GiB for llama-server, whose weight files alone are 5.5 GiB. On the
+  # documented RTX 4060 Ti it crash-looped with "No available memory for the
+  # cache blocks".
+  #
+  #   --max-model-len 16384   The Antares CLI sends context_window=16384 and
+  #                           max_tokens=4096 (antares_cli/inference/defaults.py)
+  #                           and code-enrichment-worker does not override them,
+  #                           so 32768 doubled the KV cache for unused tokens.
+  #   --kv-cache-memory-bytes 1.5 GiB. vLLM logged 2.54 GiB of KV for 32768
+  #                           tokens, so 16384 needs 1.27 GiB; the rest is block
+  #                           rounding headroom. Pinning the KV budget also skips
+  #                           vLLM's profiling pass, which charges any other
+  #                           process's VRAM growth during profiling to vLLM
+  #                           (vllm/utils MemorySnapshot: total - free - own).
+  #   --gpu-memory-utilization 0.35. With a pinned KV budget this only gates
+  #                           startup: vLLM refuses to start unless that share of
+  #                           total VRAM is free. 0.35 x 16 GiB = 5.6 GiB, the
+  #                           real footprint (3.07 GiB weights + 1.5 GiB KV + CUDA
+  #                           context and activations).
+  #
+  # Starting after llama-server is healthy makes that free-memory check see the
+  # LLM's real footprint instead of racing its weight load.
+  vllm-antares:
+    image: ${VLLM_ANTARES_IMAGE:-vllm/vllm-openai:v0.30.0}
+    container_name: blackonyx-vllm-antares
+    volumes:
+      - ./detection/models/antares-1b:/models/antares-1b:ro
+    command:
+      - "--model"
+      - "/models/antares-1b"
+      - "--served-model-name"
+      - "antares-1b"
+      - "--port"
+      - "8000"
+      - "--host"
+      - "0.0.0.0"
+      - "--max-model-len"
+      - "${VLLM_ANTARES_MAX_MODEL_LEN:-16384}"
+      - "--kv-cache-memory-bytes"
+      - "${VLLM_ANTARES_KV_CACHE_BYTES:-1610612736}"
+      - "--gpu-memory-utilization"
+      - "${VLLM_ANTARES_GPU_MEMORY_UTILIZATION:-0.35}"
+      - "--chat-template"
+      - "/models/antares-1b/chat_template.jinja"
+      - "--trust-remote-code"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    depends_on:
+      llama-server:
+        condition: service_healthy
+    networks:
+      - default
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python3",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  # ── FunctionGemma tool router (optional, 270M GGUF) ──────────────────────
+  # Small first-stage tool router that proposes at most one tool call via an
+  # OpenAI-compatible Chat Completions endpoint. The security-gateway uses it
+  # when TOOL_ROUTER_ENABLED=true to pre-select tools before the main LLM runs.
+  # Disabled by default; enable with --profile tool-router.
+  tool-router:
+    image: ${LLAMA_SERVER_IMAGE:-ghcr.io/ggml-org/llama.cpp:server-cuda}
+    container_name: blackonyx-tool-router
+    profiles: ["tool-router"]
+    volumes:
+      - ./models/tool-router:/models:ro
+    command:
+      - "-m"
+      - "/models/functiongemma-270m-it-Q8_0.gguf"
+      - "-a"
+      - "functiongemma-270m-it"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8080"
+      - "-c"
+      - "4096"
+      - "-ngl"
+      - "99"
+      - "--jinja"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - default
+      - black-onyx-runner
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python3 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health')\" 2>/dev/null || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  security-gateway:
+    build:
+      context: .
+      dockerfile: services/security-gateway/Dockerfile
+    container_name: blackonyx-security-gateway
+    environment:
+      SECURITY_GATEWAY_KEY: ${SECURITY_GATEWAY_KEY:?Set SECURITY_GATEWAY_KEY}
+      SECURITY_APPROVAL_DB: /app/state/approvals.db
+      SECURITY_CHALLENGE_DB: /app/state/challenges.sqlite3
+      SECURITY_GATEWAY_DATABASE_URL: ${SECURITY_GATEWAY_DATABASE_URL:?Set SECURITY_GATEWAY_DATABASE_URL}
+      SECURITY_CHALLENGE_PROVIDERS_JSON: ${SECURITY_CHALLENGE_PROVIDERS_JSON:-}
+      SECURITY_RUNNER_URL: http://security-runner:8080
+      SECURITY_RUNNER_TOKEN: ${SECURITY_RUNNER_TOKEN:?Set SECURITY_RUNNER_TOKEN}
+      BLACK_ONYX_BFF_INTERNAL_URL: ${BLACK_ONYX_BFF_INTERNAL_URL:-http://web:8000}
+      # LLM backend llama.cpp serving the Black-Onyx-5B Q8_0 GGUF model.
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://llama-server:8081}
+      LLM_MODEL_NAME: ${LLM_MODEL_NAME:-Black-Onyx-5B:Q8_0}
+      LLM_TIMEOUT: ${LLM_TIMEOUT:-300}
+      MAX_TOKENS: ${MAX_TOKENS:-4096}
+      TEMPERATURE: ${TEMPERATURE:-0.7}
+      # Sandbox execution mode runner is the default (authenticated HTTP).
+      SANDBOX_MODE: runner
+      # Approval policy: required (default) or auto (trusted labs only).
+      TOOL_APPROVAL: ${TOOL_APPROVAL:-required}
+      SECURITY_DEFAULT_LAB_PROFILE: ${SECURITY_DEFAULT_LAB_PROFILE:-anvil}
+      # Per-tool gates (all default off).
+      ENABLE_BASH_TOOL: ${ENABLE_BASH_TOOL:-false}
+      ENABLE_HYDRA: ${ENABLE_HYDRA:-false}
+      ENABLE_TCPDUMP: ${ENABLE_TCPDUMP:-false}
+      ENABLE_CAST_SEND: ${ENABLE_CAST_SEND:-false}
+      SQLMAP_EXPLOIT_MODE: ${SQLMAP_EXPLOIT_MODE:-false}
+      # Target policy mirrors sandbox SSRF validation.
+      ALLOW_PRIVATE_TARGETS: ${ALLOW_PRIVATE_TARGETS:-false}
+      ALLOW_PUBLIC_TARGETS: ${ALLOW_PUBLIC_TARGETS:-false}
+      ALLOWED_TARGETS: ${ALLOWED_TARGETS:-}
+      # The runner reports network tools unavailable until a digest-pinned
+      # guard and independently verified packet boundary are present.
+      SECURITY_EGRESS_NETWORK: ${SECURITY_EGRESS_NETWORK:-blackonyx_sandbox_egress}
+      SECURITY_EGRESS_VERIFIED: ${SECURITY_EGRESS_VERIFIED:-false}
+      SECURITY_CAPTURE_VERIFIED: ${SECURITY_CAPTURE_VERIFIED:-false}
+      SHODAN_API_KEY: ${SHODAN_API_KEY:-}
+      # Agent loop limits.
+      MAX_TOOL_ROUNDS: "15"
+      # Optional FunctionGemma tool router (enable with --profile tool-router).
+      TOOL_ROUTER_ENABLED: ${TOOL_ROUTER_ENABLED:-false}
+      TOOL_ROUTER_BASE_URL: ${TOOL_ROUTER_BASE_URL:-http://tool-router:8080}
+      TOOL_ROUTER_MODEL: ${TOOL_ROUTER_MODEL:-functiongemma-270m-it}
+    depends_on:
+      - llama-server
+    volumes:
+      - security_approvals:/app/state
+    networks:
+      - default
+      - black-onyx-runner
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "/usr/local/bin/python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready')",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  # Host bind mounts are created as the compose user. The runner is UID 10001
+  # and must own /workspace before it can provision Security Lab sessions.
+  security-sessions-permissions:
+    labels:
+      com.blackonyx.one-shot: "true"
+    build:
+      context: .
+      dockerfile: services/security-runner/Dockerfile
+    entrypoint:
+      [
+        "/usr/local/bin/python",
+        "/usr/local/lib/black-onyx/fix_security_sessions_owner.py",
+      ]
+    user: "0:0"
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN]
+    security_opt: [no-new-privileges:true]
+    network_mode: none
+    volumes:
+      - ${SECURITY_SESSIONS_HOST_ROOT:?Set an absolute host sessions directory}:/workspace
+    restart: "no"
+
+  security-runner:
+    build:
+      context: .
+      dockerfile: services/security-runner/Dockerfile
+    container_name: blackonyx-security-runner
+    depends_on:
+      security-sessions-permissions:
+        condition: service_completed_successfully
+    # Docker Desktop exposes docker.sock as root:root; native hosts can set
+    # SECURITY_DOCKER_SOCKET_GID to the socket's actual group id.
+    group_add: ["${SECURITY_DOCKER_SOCKET_GID:-0}"]
+    environment:
+      SECURITY_RUNNER_TOKEN: ${SECURITY_RUNNER_TOKEN:?Set SECURITY_RUNNER_TOKEN}
+      SECURITY_SANDBOX_IMAGE: ${SECURITY_SANDBOX_IMAGE:?Set SECURITY_SANDBOX_IMAGE (digest-pinned)}
+      SECURITY_GUARD_IMAGE: ${SECURITY_GUARD_IMAGE:-}
+      SECURITY_EGRESS_VERIFIED: ${SECURITY_EGRESS_VERIFIED:-false}
+      SECURITY_CAPTURE_VERIFIED: ${SECURITY_CAPTURE_VERIFIED:-false}
+      SECURITY_EGRESS_NETWORK: ${SECURITY_EGRESS_NETWORK:-blackonyx_sandbox_egress}
+      SECURITY_LAB_PROFILES_JSON: ${SECURITY_LAB_PROFILES_JSON:-}
+      ALLOW_PUBLIC_TARGETS: ${ALLOW_PUBLIC_TARGETS:-false}
+      ALLOW_PRIVATE_TARGETS: ${ALLOW_PRIVATE_TARGETS:-false}
+      SESSIONS_ROOT: /workspace
+      SECURITY_RUNNER_MAX_JOBS_PER_SESSION: ${SECURITY_RUNNER_MAX_JOBS_PER_SESSION:-2}
+      SECURITY_RUNNER_WORKSPACE_QUOTA_BYTES: ${SECURITY_RUNNER_WORKSPACE_QUOTA_BYTES:-1073741824}
+    volumes:
+      - ${SECURITY_SESSIONS_HOST_ROOT:?Set an absolute host sessions directory}:/workspace
+      # Docker socket for ephemeral container creation. In production,
+      # replace with docker-socket-proxy (tecnativa/docker-socket-proxy)
+      # granting only CONTAINERS+EXEC+POST+LOGS. The socket is mounted
+      # with group 999 (docker) so the non-root app user can access it.
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+    networks:
+      - black-onyx-runner
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "/usr/local/bin/python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz')",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+networks:
+  black-onyx-runner:
+    name: blackonyx_runner
+    internal: true
+  black-onyx-sandbox-egress:
+    name: ${SECURITY_EGRESS_NETWORK:-blackonyx_sandbox_egress}
+    driver: bridge
+    internal: false
+    enable_ipv6: false
+    labels:
+      com.blackonyx.security-egress: "true"
+
+volumes:
+  security_approvals:
+    name: blackonyx_security_approvals

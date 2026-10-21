@@ -1,0 +1,19 @@
+# LAB ONLY: publish detection core APIs on loopback for host-side smoke/curl.
+# Do not use on shared hosts. JWT validation is still required (OIDC_DISABLED=false).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.platform.yml \
+#     -f docker-compose.detection-core.yml \
+#     -f docker-compose.detection-lab-ports.yml up -d --build
+
+services:
+  ingestion-gateway:
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  incident-api:
+    ports:
+      - "127.0.0.1:8083:8083"
+
+  asset-registry:
+    ports:
+      - "127.0.0.1:8081:8081"

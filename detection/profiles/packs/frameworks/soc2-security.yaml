@@ -1,0 +1,73 @@
+pack_id: soc2-security
+kind: framework
+version: tsc-2017
+title: SOC 2 Trust Services Criteria — Security
+extends_surfaces:
+- network
+- host
+- webapp
+- identity
+- cloud
+- code
+checks:
+- check_id: soc2.cc6.logical-access
+  title: Logical access unique IDs MFA RBAC
+  surfaces:
+  - identity
+  automation: auto
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+- check_id: soc2.cc7.monitoring
+  title: Security monitoring and alerting
+  surfaces:
+  - host
+  - network
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - log_source_silent
+- check_id: soc2.cc8.change-mgmt
+  title: Change management for production
+  surfaces:
+  - code
+  - cloud
+  automation: hybrid
+  severity_default: high
+  evidence_types:
+  - detector_hit
+- check_id: soc2.cc6.encryption
+  title: Encryption in transit and at rest
+  surfaces:
+  - webapp
+  - cloud
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - probe
+  bindings:
+    detectors:
+    - tls_probe_weak
+- check_id: soc2.cc9.vendor
+  title: Vendor risk reviews
+  surfaces:
+  - cloud
+  automation: manual
+  severity_default: medium
+  evidence_types:
+  - attestation
+- check_id: soc2.cc7.vuln
+  title: Vulnerability management evidence
+  surfaces:
+  - host
+  - webapp
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - vuln_ingest

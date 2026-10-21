@@ -1,0 +1,4 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+deploy/detection/runtime/passwd text eol=lf
+deploy/detection/runtime/group text eol=lf

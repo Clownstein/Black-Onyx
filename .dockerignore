@@ -1,0 +1,107 @@
+.git
+.env
+.secrets
+.claude
+.codex
+.agents
+config.yaml
+data
+.checkpoints
+.pytest_cache
+.pytest-tmp
+.pytest_tmp_*
+.final-image-check-*
+scripts/.primary_scan_tmp
+scripts/.go_scan_tmp
+scripts/.scan_progress_tmp.txt
+.uv-cache
+.playwright-browsers
+web/playwright-report
+web/test-results
+.mypy_cache
+.ruff_cache
+**/__pycache__
+**/*.py[cod]
+**/*.gguf
+**/*.safetensors
+web/node_modules
+web/dist
+dist
+build
+*.sqlite
+*.db
+*.log
+# Heavy directories not needed by any Docker build
+detection
+# ...except the few paths service images actually COPY out of it. The blanket
+# exclusion meant `docker compose --build` could not build incident-api,
+# code-processor, response-orchestrator, code-enrichment-worker or
+# malware-triage from the repo root at all -- the build aborted with
+# "/detection/profiles: not found" -- which also broke the detection-runtime-smoke
+# CI job. Listed individually so detection/ stays out of the context otherwise;
+# its model artifacts and datasets are large.
+!detection/profiles
+!detection/playbooks
+!detection/scanners/semgrep/rules
+!detection/models/common
+!detection/models/malware-static
+!detection/models/antares-1b/assets/antares-cli
+!detection/models/antares-1b/assets/antares-cli/pyproject.toml
+!detection/models/antares-1b/assets/antares-cli/README.md
+!detection/models/antares-1b/assets/antares-cli/LICENSE
+!detection/models/antares-1b/assets/antares-cli/THIRD_PARTY_NOTICES.md
+!detection/models/antares-1b/assets/antares-cli/src
+!detection/models/code-model/pyproject.toml
+!detection/models/code-model/code_model
+!detection/models/code-model/inference
+!detection/models/code-model/training
+!detection/models/code-model/artifacts
+!detection/models/host-state-model/pyproject.toml
+!detection/models/host-state-model/host_state_model
+!detection/models/host-state-model/inference
+!detection/models/log-model/pyproject.toml
+!detection/models/log-model/log_model
+!detection/models/log-model/inference
+!detection/models/log-model/training
+!detection/models/log-model/artifacts
+!detection/models/metrics-model/pyproject.toml
+!detection/models/metrics-model/metrics_model
+!detection/models/metrics-model/inference
+!detection/models/metrics-model/training
+!detection/models/metrics-model/artifacts
+!detection/models/network-model/pyproject.toml
+!detection/models/network-model/network_model
+!detection/models/network-model/inference
+!detection/models/network-model/training
+!detection/models/network-model/artifacts
+models
+Archive
+black-onyx-tools
+# ...except the MCP tool implementations and their catalog. pyproject's
+# `mcp` extra installs black-onyx-tools from this path, and mcp/registry.py
+# reads datasets/tool_use/tools.json at runtime. Excluding the whole
+# directory left the deployed image with zero platform tools.
+!black-onyx-tools/pyproject.toml
+!black-onyx-tools/README.md
+!black-onyx-tools/src
+!black-onyx-tools/datasets/tool_use/tools.json
+black-onyx-tools/.venv
+black-onyx-tools/build
+black-onyx-tools/tests
+docs
+deploy
+!deploy/detection/runtime/passwd
+!deploy/detection/runtime/group
+contracts
+# ...except the shared event envelope, which services/ingestion-gateway
+# COPYs into its Go build.
+!contracts/common
+tests
+packages/black_onyx_sandbox/.venv
+packages/black_onyx_sandbox/.pytest_cache
+packages/black_onyx_sandbox/build
+services/*/build
+services/*/.venv
+services/*/.pytest_cache
+.code-review-graph
+.venv

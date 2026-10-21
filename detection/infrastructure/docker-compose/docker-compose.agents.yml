@@ -1,0 +1,13 @@
+# Lab osquery agent profile for Black Onyx (joins root Compose project).
+# From repo root:
+#   docker compose -f docker-compose.yml -f docker-compose.platform.yml \
+#     -f detection/infrastructure/docker-compose/docker-compose.agents.yml --profile agents up
+
+services:
+  osquery-lab:
+    image: osquery/osquery:5.15.0
+    container_name: blackonyx-osquery-lab
+    profiles: ["agents"]
+    networks: [default]
+    command: ["osqueryi", "--version"]
+    restart: "no"

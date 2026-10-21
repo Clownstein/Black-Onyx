@@ -1,0 +1,33 @@
+pack_id: surface-host
+kind: surface
+version: '1.0'
+title: Host Surface Checks
+extends_surfaces:
+- host
+checks:
+- check_id: surface.host.persistence
+  title: Persistence detections
+  surfaces:
+  - host
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  mitre_techniques:
+  - T1053.005
+  - T1547
+  bindings:
+    detectors:
+    - sigma:rare_scheduled_task
+    - rare_binary_path
+- check_id: surface.host.telemetry
+  title: Host agent heartbeat present
+  surfaces:
+  - host
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - log_source_silent

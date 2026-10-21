@@ -1,0 +1,7 @@
+capstone==5.0.3
+cryptography==50.0.1
+filebytes==0.10.2
+pwntools==4.14.1
+ropper==1.13.8
+slither-analyzer==0.11.3
+yara-python==4.5.4

@@ -1,0 +1,2947 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_Bash",
+      "description": "Execute a bash command in the sandbox. Returns stdout, stderr, and exit code.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "description": "The bash command to execute"
+          },
+          "timeout": {
+            "type": "integer",
+            "description": "Timeout in seconds",
+            "default": 30
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          },
+          "approval_id": {
+            "type": "string",
+            "description": "Short-lived single-use ID returned by sec_approve_tool for the exact unchanged server preview"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_Edit",
+      "description": "Edit a file by replacing old_string with new_string. Requires a unique match unless replace_all is true.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "File path relative to workspace"
+          },
+          "old_string": {
+            "type": "string",
+            "description": "Exact string to find"
+          },
+          "new_string": {
+            "type": "string",
+            "description": "Replacement"
+          },
+          "replace_all": {
+            "type": "boolean",
+            "description": "Replace all occurrences",
+            "default": false
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          },
+          "approval_id": {
+            "type": "string",
+            "description": "Short-lived single-use ID returned by sec_approve_tool for the exact unchanged server preview"
+          }
+        },
+        "required": [
+          "path",
+          "old_string",
+          "new_string"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_Glob",
+      "description": "Find workspace files matching a glob pattern (supports recursive **).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pattern": {
+            "type": "string",
+            "description": "Glob pattern"
+          },
+          "path": {
+            "type": "string",
+            "description": "Directory to search",
+            "default": "."
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          }
+        },
+        "required": [
+          "pattern"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_Grep",
+      "description": "Search for a regex pattern in files within the sandbox.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pattern": {
+            "type": "string",
+            "description": "Regular expression pattern"
+          },
+          "path": {
+            "type": "string",
+            "description": "Directory or file to search",
+            "default": "."
+          },
+          "glob": {
+            "type": "string",
+            "description": "Glob filter (e.g. *.py)"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          }
+        },
+        "required": [
+          "pattern"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_ListFiles",
+      "description": "List files in a directory.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Directory path",
+            "default": "."
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          }
+        },
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_Read",
+      "description": "Read file contents from the sandbox workspace.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "File path relative to workspace"
+          },
+          "offset": {
+            "type": "integer",
+            "description": "Line to start reading from (1-based)",
+            "default": 1
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum lines to read",
+            "default": 2000
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_Write",
+      "description": "Write content to a file in the sandbox workspace, overwriting if it exists.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "File path relative to workspace"
+          },
+          "content": {
+            "type": "string",
+            "description": "Text content to write"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          },
+          "approval_id": {
+            "type": "string",
+            "description": "Short-lived single-use ID returned by sec_approve_tool for the exact unchanged server preview"
+          }
+        },
+        "required": [
+          "path",
+          "content"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_add_ioc_to_case",
+      "description": "Add IOC to a case file.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "description": "Case ID"
+          },
+          "ioc_type": {
+            "type": "string",
+            "description": "IOC type"
+          },
+          "ioc_value": {
+            "type": "string",
+            "description": "IOC value"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          },
+          "approval_id": {
+            "type": "string",
+            "description": "Short-lived single-use ID returned by sec_approve_tool for the exact unchanged server preview"
+          }
+        },
+        "required": [
+          "case_id",
+          "ioc_type",
+          "ioc_value"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_aes_decrypt",
+      "description": "AES-GCM decrypt data with a key.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "string",
+            "description": "Base64 ciphertext"
+          },
+          "key": {
+            "type": "string",
+            "description": "Decryption key (hex)"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          }
+        },
+        "required": [
+          "data",
+          "key"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_aes_encrypt",
+      "description": "AES-GCM encrypt data with a key.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "string",
+            "description": "Plaintext data"
+          },
+          "key": {
+            "type": "string",
+            "description": "Encryption key (hex)"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          }
+        },
+        "required": [
+          "data",
+          "key"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_agent_run_resume",
+      "description": "Resume with a single-use approval ID or deny the pending call.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "run_id": {
+            "type": "string"
+          },
+          "approval_id": {
+            "type": "string"
+          },
+          "deny": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "required": [
+          "run_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_agent_run_status",
+      "description": "Read a paused security-agent run and its pending preview.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "run_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_analyze_contract",
+      "description": "Analyze a contract with Slither.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Contract path"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          },
+          "approval_id": {
+            "type": "string",
+            "description": "Short-lived single-use ID returned by sec_approve_tool for the exact unchanged server preview"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_analyze_pcap",
+      "description": "Analyze a PCAP with tshark.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "PCAP file path"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Display filter"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          },
+          "approval_id": {
+            "type": "string",
+            "description": "Short-lived single-use ID returned by sec_approve_tool for the exact unchanged server preview"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_approve_tool",
+      "description": "Approve an unchanged server-issued preview after explicit human review.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tool_name": {
+            "type": "string"
+          },
+          "preview": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "tool_name",
+          "preview"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_cast_call",
+      "description": "Read-only Ethereum contract call.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "to": {
+            "type": "string",
+            "description": "Contract address"
+          },
+          "data": {
+            "type": "string",
+            "description": "Calldata (hex)"
+          },
+          "rpc_url": {
+            "type": "string",
+            "description": "RPC URL"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          }
+        },
+        "required": [
+          "to",
+          "data",
+          "rpc_url"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_cast_keccak",
+      "description": "Compute keccak256 hash.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "string",
+            "description": "Data to hash"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          }
+        },
+        "required": [
+          "data"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_cast_send",
+      "description": "Send an approved transaction only to an owned Anvil lab using its unlocked test account; no signing key enters the tool job.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "to": {
+            "type": "string",
+            "description": "20-byte recipient address",
+            "pattern": "^0x[0-9a-fA-F]{40}$"
+          },
+          "sender": {
+            "type": "string",
+            "description": "20-byte sender address unlocked by the registered Anvil node",
+            "pattern": "^0x[0-9a-fA-F]{40}$"
+          },
+          "data": {
+            "type": "string",
+            "description": "Hex calldata (maximum 64 KiB)",
+            "maxLength": 131074
+          },
+          "value": {
+            "type": "string",
+            "description": "Unsigned value in wei",
+            "default": "0",
+            "maxLength": 78
+          },
+          "rpc_url": {
+            "type": "string",
+            "description": "Literal private IPv4 Anvil endpoint on TCP 8545",
+            "maxLength": 256
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          },
+          "approval_id": {
+            "type": "string",
+            "description": "Short-lived single-use ID returned by sec_approve_tool for the exact unchanged server preview"
+          }
+        },
+        "required": [
+          "to",
+          "sender",
+          "data",
+          "value",
+          "rpc_url"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_check_solved",
+      "description": "Check a registered challenge. Only operator-registered challenge IDs are accepted.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "challenge_id": {
+            "type": "string",
+            "description": "Registered challenge ID"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          }
+        },
+        "required": [
+          "challenge_id"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_checksec",
+      "description": "Check binary security properties.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Binary path"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_compile_contracts",
+      "description": "Compile Solidity contracts with forge.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Contract path"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          },
+          "approval_id": {
+            "type": "string",
+            "description": "Short-lived single-use ID returned by sec_approve_tool for the exact unchanged server preview"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_compute_threat_score",
+      "description": "Compute composite threat score from IOC enrichment data.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "iocs": {
+            "type": "string",
+            "description": "JSON array of IOCs with confidence scores"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          }
+        },
+        "required": [
+          "iocs"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_cyclic_pattern",
+      "description": "Generate cyclic pattern for offset finding.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "size": {
+            "type": "integer",
+            "description": "Pattern size",
+            "default": 100
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          },
+          "approval_id": {
+            "type": "string",
+            "description": "Short-lived single-use ID returned by sec_approve_tool for the exact unchanged server preview"
+          }
+        },
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_decode_base64",
+      "description": "Decode base64.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "string",
+            "description": "Base64 string"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          }
+        },
+        "required": [
+          "data"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_decode_hex",
+      "description": "Decode hex to ASCII.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "string",
+            "description": "Hex string"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          }
+        },
+        "required": [
+          "data"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_decompile",
+      "description": "Decompile to radare2 pseudo-C (pdc): one function if given, otherwise every analyzed function.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Binary path"
+          },
+          "function": {
+            "type": "string",
+            "description": "Function name (optional)"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          },
+          "approval_id": {
+            "type": "string",
+            "description": "Short-lived single-use ID returned by sec_approve_tool for the exact unchanged server preview"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_decompile_function",
+      "description": "Decompile one function to radare2 pseudo-C (pdc).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Binary path"
+          },
+          "function": {
+            "type": "string",
+            "description": "Function name"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          },
+          "approval_id": {
+            "type": "string",
+            "description": "Short-lived single-use ID returned by sec_approve_tool for the exact unchanged server preview"
+          }
+        },
+        "required": [
+          "path",
+          "function"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_disassemble",
+      "description": "Disassemble a binary with objdump.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Binary path"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          },
+          "approval_id": {
+            "type": "string",
+            "description": "Short-lived single-use ID returned by sec_approve_tool for the exact unchanged server preview"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_disassemble_binary",
+      "description": "Disassemble with r2.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Binary path"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          },
+          "approval_id": {
+            "type": "string",
+            "description": "Short-lived single-use ID returned by sec_approve_tool for the exact unchanged server preview"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_encode_base64",
+      "description": "Encode to base64.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "string",
+            "description": "Plain data"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          }
+        },
+        "required": [
+          "data"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_extract_iocs",
+      "description": "Extract IOCs from text (IPs, emails, URLs, hashes).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "Text to extract IOCs from"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          }
+        },
+        "required": [
+          "text"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_extract_strings",
+      "description": "Extract strings from a binary.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Binary path"
+          },
+          "min_length": {
+            "type": "integer",
+            "description": "Minimum string length",
+            "default": 4
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_file_info",
+      "description": "Get file info (file, readelf).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Binary path"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_generate_yara_rule",
+      "description": "Generate and compile a YARA rule.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Rule name"
+          },
+          "strings": {
+            "type": "string",
+            "description": "String patterns"
+          },
+          "condition": {
+            "type": "string",
+            "description": "YARA condition"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          },
+          "approval_id": {
+            "type": "string",
+            "description": "Short-lived single-use ID returned by sec_approve_tool for the exact unchanged server preview"
+          }
+        },
+        "required": [
+          "name",
+          "strings",
+          "condition"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_get_contract_storage",
+      "description": "Read contract storage slots.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Contract address"
+          },
+          "slots": {
+            "type": "string",
+            "description": "Storage slot"
+          },
+          "rpc_url": {
+            "type": "string",
+            "description": "Approved lab RPC URL"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          }
+        },
+        "required": [
+          "address",
+          "slots",
+          "rpc_url"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_gobuster_dir",
+      "description": "Directory brute-force with gobuster.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "Base URL"
+          },
+          "timeout": {
+            "type": "integer",
+            "description": "Timeout",
+            "default": 120
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          },
+          "approval_id": {
+            "type": "string",
+            "description": "Short-lived single-use ID returned by sec_approve_tool for the exact unchanged server preview"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_hash_data",
+      "description": "Hash data (md5/sha1/sha256/sha512).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "string",
+            "description": "Data to hash"
+          },
+          "algorithm": {
+            "type": "string",
+            "description": "Hash algorithm",
+            "default": "sha256"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          }
+        },
+        "required": [
+          "data"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_hydra_brute",
+      "description": "Brute-force with hydra.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "description": "Target host"
+          },
+          "service": {
+            "type": "string",
+            "description": "Approved service (ssh, ftp, http-get, ...)"
+          },
+          "timeout": {
+            "type": "integer",
+            "description": "Maximum run time in seconds",
+            "default": 60
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          },
+          "approval_id": {
+            "type": "string",
+            "description": "Short-lived single-use ID returned by sec_approve_tool for the exact unchanged server preview"
+          }
+        },
+        "required": [
+          "target",
+          "service"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_nikto_scan",
+      "description": "Run nikto against a target.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "description": "Target URL/host"
+          },
+          "timeout": {
+            "type": "integer",
+            "description": "Timeout",
+            "default": 120
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          },
+          "approval_id": {
+            "type": "string",
+            "description": "Short-lived single-use ID returned by sec_approve_tool for the exact unchanged server preview"
+          }
+        },
+        "required": [
+          "target"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_nmap_scan",
+      "description": "Run nmap against a target.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "description": "Target host/IP"
+          },
+          "ports": {
+            "type": "string",
+            "description": "TCP ports (max 64)"
+          },
+          "timeout": {
+            "type": "integer",
+            "description": "Timeout",
+            "default": 60
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          },
+          "approval_id": {
+            "type": "string",
+            "description": "Short-lived single-use ID returned by sec_approve_tool for the exact unchanged server preview"
+          }
+        },
+        "required": [
+          "target",
+          "ports"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_port_scan",
+      "description": "Quick TCP port scan.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "description": "Target host"
+          },
+          "ports": {
+            "type": "string",
+            "description": "TCP ports (max 64)",
+            "default": "80,443"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          },
+          "approval_id": {
+            "type": "string",
+            "description": "Short-lived single-use ID returned by sec_approve_tool for the exact unchanged server preview"
+          }
+        },
+        "required": [
+          "target"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_preview_tool",
+      "description": "Create an exact actor-bound security-tool preview for human review.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tool_name": {
+            "type": "string"
+          },
+          "arguments": {
+            "type": "object"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "lab_profile_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool_name",
+          "arguments"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_run_binary",
+      "description": "Run a binary with timeout.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Binary path"
+          },
+          "args": {
+            "type": "string",
+            "description": "Arguments"
+          },
+          "timeout": {
+            "type": "integer",
+            "description": "Timeout in seconds",
+            "default": 30
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          },
+          "approval_id": {
+            "type": "string",
+            "description": "Short-lived single-use ID returned by sec_approve_tool for the exact unchanged server preview"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_search_gadgets",
+      "description": "Search a binary for ROP gadgets matching an expression (ropper --search).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Binary path"
+          },
+          "search": {
+            "type": "string",
+            "description": "Gadget expression, e.g. 'pop rdi; ret'"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          },
+          "approval_id": {
+            "type": "string",
+            "description": "Short-lived single-use ID returned by sec_approve_tool for the exact unchanged server preview"
+          }
+        },
+        "required": [
+          "path",
+          "search"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_shodan_search",
+      "description": "Perform a bounded Shodan host lookup for an exact public IPv4 address or hostname; requires a configured provider key.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Exact target in ip:<IPv4> or hostname:<public DNS name> form",
+            "maxLength": 512
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_sqlmap_scan",
+      "description": "Run sqlmap against a target URL.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "Target URL"
+          },
+          "timeout": {
+            "type": "integer",
+            "description": "Timeout",
+            "default": 120
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          },
+          "approval_id": {
+            "type": "string",
+            "description": "Short-lived single-use ID returned by sec_approve_tool for the exact unchanged server preview"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_submit_solution",
+      "description": "Submit a bounded text/JSON answer to a registered challenge; submitted content is never executed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "challenge_id": {
+            "type": "string",
+            "description": "Registered challenge ID"
+          },
+          "solution": {
+            "type": "string",
+            "description": "Text or JSON answer; never executed (maximum 16 KiB)",
+            "maxLength": 16384
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          },
+          "approval_id": {
+            "type": "string",
+            "description": "Short-lived single-use ID returned by sec_approve_tool for the exact unchanged server preview"
+          }
+        },
+        "required": [
+          "challenge_id",
+          "solution"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_tcpdump_capture",
+      "description": "Capture packets with tcpdump.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "duration": {
+            "type": "integer",
+            "description": "Capture duration (maximum 30 seconds)",
+            "default": 10
+          },
+          "filter": {
+            "type": "string",
+            "description": "BPF filter (optional)",
+            "default": ""
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          },
+          "approval_id": {
+            "type": "string",
+            "description": "Short-lived single-use ID returned by sec_approve_tool for the exact unchanged server preview"
+          }
+        }
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sec_whois_lookup",
+      "description": "WHOIS lookup for a domain.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string",
+            "description": "Domain to look up"
+          },
+          "session_id": {
+            "type": "string",
+            "default": "mcp-security"
+          },
+          "request_timeout": {
+            "type": "integer",
+            "default": 60
+          },
+          "network_profile": {
+            "type": "string",
+            "enum": [
+              "offline",
+              "public",
+              "lab"
+            ],
+            "default": "offline"
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope_ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Approved destination TCP ports copied from sec_preview_tool"
+          },
+          "lab_profile_id": {
+            "type": "string"
+          },
+          "resolved_targets": {
+            "type": "object",
+            "description": "Pinned target map copied unchanged from sec_preview_tool"
+          }
+        },
+        "required": [
+          "domain"
+        ]
+      }
+    }
+  }
+]

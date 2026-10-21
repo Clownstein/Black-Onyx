@@ -1,0 +1,202 @@
+# Black Onyx full Docker stack.
+#
+# `docker-compose up -d`           starts Qdrant + the web UI (default profile).
+# `docker-compose run --rm cli ...` runs any CLI subcommand in the same image,
+#                                   e.g. `docker-compose run --rm cli ingest -d /app/data`.
+#
+# OCR defaults to Tesseract inside the containers. PaddleOCR remains available
+# as an explicit optional dependency for deployments that accept its footprint.
+#
+# Qwen3 embeddings via Ollama (embedding.backend=ollama in config.yaml):
+#   - Host Ollama: set QDRANT_EMBEDDING__OLLAMA_BASE_URL=http://host.docker.internal:11434
+#     (Docker Desktop on Windows/macOS; Linux may use host-gateway extra_hosts).
+#   - Chat LLM uses the same host via llm.local.base_url when provider=local.
+
+# Common config shared by the web UI and CLI services (YAML anchor, not a service).
+x-app-base: &app-base
+  build:
+    context: .
+  image: black-onyx:1.0.0
+  depends_on:
+    - qdrant
+    - searxng
+  # Pass the host NVIDIA GPU (e.g. RTX 4060 Ti) into the container so
+  # torch/sentence-transformers/CLIP/llama.cpp can use CUDA when device=auto.
+  gpus: all
+  environment:
+    QDRANT_QDRANT__HOST: qdrant
+    QDRANT_QDRANT__PORT: "6333"
+    QDRANT_QDRANT__API_KEY: ${QDRANT_QDRANT__API_KEY:-}
+    QDRANT_OCR__BACKEND: ${QDRANT_OCR__BACKEND:-tesseract}
+    BLACK_ONYX_AUTH_SECRET: ${BLACK_ONYX_AUTH_SECRET:?Set BLACK_ONYX_AUTH_SECRET}
+    BLACK_ONYX_DATABASE_URL: ${BLACK_ONYX_DATABASE_URL:-}
+    # Backups pg_dump the security-gateway database alongside black_onyx.
+    SECURITY_GATEWAY_DATABASE_URL: ${SECURITY_GATEWAY_DATABASE_URL:-}
+    # Collector install guides show the URLs/hosts agents should reach.
+    INGEST_GATEWAY_HOST_PORT: ${INGEST_GATEWAY_HOST_PORT:-18090}
+    INGEST_GATEWAY_REMOTE_BIND: ${INGEST_GATEWAY_REMOTE_BIND:-127.0.0.1}
+    INGEST_GATEWAY_REMOTE_PORT: ${INGEST_GATEWAY_REMOTE_PORT:-18091}
+    INGEST_GATEWAY_REMOTE_URL: ${INGEST_GATEWAY_REMOTE_URL:-}
+    ASSET_REGISTRY_HOST_PORT: ${ASSET_REGISTRY_HOST_PORT:-18081}
+    ASSET_REGISTRY_REMOTE_BIND: ${ASSET_REGISTRY_REMOTE_BIND:-127.0.0.1}
+    ASSET_REGISTRY_REMOTE_PORT: ${ASSET_REGISTRY_REMOTE_PORT:-18082}
+    ASSET_REGISTRY_REMOTE_URL: ${ASSET_REGISTRY_REMOTE_URL:-}
+    WAZUH_MANAGER_ADDRESS: ${WAZUH_MANAGER_ADDRESS:-}
+    # Enrollment secrets an administrator can reveal (audited) in collector guides.
+    BLACK_ONYX_COLLECTOR_INGEST_KEY: ${BLACK_ONYX_COLLECTOR_INGEST_KEY:-}
+    WAZUH_REGISTRATION_PASSWORD: ${WAZUH_REGISTRATION_PASSWORD:-}
+    NOTIFICATION_WEBHOOK_SECRET: ${NOTIFICATION_WEBHOOK_SECRET:-}
+    BLACK_ONYX_DETECTION_TENANT: ${BLACK_ONYX_DETECTION_TENANT:?Set BLACK_ONYX_DETECTION_TENANT}
+    QDRANT_SECURITY__PRODUCTION: "false"
+    QDRANT_SECURITY__SECURE_COOKIES: "false"
+    QDRANT_SECURITY__EXTERNAL_URL: ${QDRANT_SECURITY__EXTERNAL_URL:-http://127.0.0.1:8000}
+    QDRANT_SECURITY__ALLOWED_HOSTS: ${QDRANT_SECURITY__ALLOWED_HOSTS:-["127.0.0.1","localhost","web"]}
+    NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
+    NVIDIA_DRIVER_CAPABILITIES: ${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}
+    # Explicit pass-through keeps Compose from silently dropping .env secrets.
+    OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+    FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY:-}
+    QDRANT_WEB_SEARCH__SEARXNG_URL: ${QDRANT_WEB_SEARCH__SEARXNG_URL:-http://searxng:8080}
+    # Ollama on the Docker host (Qwen3 embed / local chat). Uncomment when using config.qwen3-ollama.example.yaml:
+    # QDRANT_EMBEDDING__OLLAMA_BASE_URL: http://host.docker.internal:11434
+    # QDRANT_LLM__LOCAL__BASE_URL: http://host.docker.internal:11434
+    # Detection-plane BFF upstreams (docker-compose.detection-core.yml / detection-apps)
+    BLACK_ONYX_INCIDENT_API_URL: ${BLACK_ONYX_INCIDENT_API_URL:-http://incident-api:8083}
+    BLACK_ONYX_ASSET_REGISTRY_URL: ${BLACK_ONYX_ASSET_REGISTRY_URL:-http://asset-registry:8081}
+    ASSET_REGISTRY_SERVICE_KEY: ${ASSET_REGISTRY_SERVICE_KEY:-}
+    BLACK_ONYX_THREAT_INTEL_URL: ${BLACK_ONYX_THREAT_INTEL_URL:-http://threat-intel-service:8098}
+    BLACK_ONYX_INTEGRATION_HUB_URL: ${BLACK_ONYX_INTEGRATION_HUB_URL:-http://integration-hub:8105}
+    BLACK_ONYX_RESPONSE_URL: ${BLACK_ONYX_RESPONSE_URL:-http://response-orchestrator:8111}
+    BLACK_ONYX_NOTIFY_URL: ${BLACK_ONYX_NOTIFY_URL:-http://notification-service:8086}
+    BLACK_ONYX_TRAINING_URL: ${BLACK_ONYX_TRAINING_URL:-http://training-orchestrator:8096}
+    BLACK_ONYX_INGEST_URL: ${BLACK_ONYX_INGEST_URL:-http://ingestion-gateway:8080}
+    # Security tooling BFF upstream (docker-compose.security-tools.yml)
+    BLACK_ONYX_SECURITY_GATEWAY_URL: ${BLACK_ONYX_SECURITY_GATEWAY_URL:-http://security-gateway:8000}
+    SECURITY_GATEWAY_KEY: ${SECURITY_GATEWAY_KEY:-}
+    INCIDENT_API_SERVICE_KEY: ${INCIDENT_API_SERVICE_KEY:-}
+    THREAT_INTEL_SERVICE_KEY: ${THREAT_INTEL_SERVICE_API_KEY:-}
+    INTEGRATION_HUB_API_KEY: ${INTEGRATION_HUB_API_KEY:-}
+    RESPONSE_ORCHESTRATOR_API_KEY: ${RESPONSE_ORCHESTRATOR_API_KEY:-}
+    RESPONSE_ORCHESTRATOR_APPROVER_API_KEY: ${RESPONSE_ORCHESTRATOR_APPROVER_API_KEY:-}
+    NOTIFICATION_API_KEY: ${NOTIFICATION_API_KEY:-}
+    TRAINING_API_KEY: ${TRAINING_API_KEY:-}
+    MODEL_GATEWAY_API_KEY: ${MODEL_GATEWAY_API_KEY:-}
+    API_KEYS: ${API_KEYS:-}
+    # Feeds → MISP. Empty key keeps sync disabled until configured in the UI
+    # or set here. Internal Docker MISP is http://misp (port 80) by default.
+    MISP_API_KEY: ${MISP_API_KEY:-}
+    BLACK_ONYX_MISP_INTERNAL_HOSTS: ${BLACK_ONYX_MISP_INTERNAL_HOSTS:-misp}
+    BLACK_ONYX_COLLECTORS_DIR: /app/detection/collectors
+  volumes:
+    - ./data:/app/data:ro
+    - ${BLACK_ONYX_MODEL_DIR:-./models}:/models:ro
+    - ./detection/collectors:/app/detection/collectors:ro
+    - checkpoints_data:/app/.checkpoints
+    # Embedding/NER/CLIP weights download here on first use; keeping them in a
+    # volume avoids re-downloading several hundred MB on every recreate.
+    - model_cache:/app/.cache
+
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.19.1
+    # Only bind to localhost on the host the web/cli services reach Qdrant
+    # over the internal Docker network via the `qdrant` hostname, so these
+    # ports are only for local inspection from the host, never the network.
+    # Override with QDRANT_HTTP_PORT / QDRANT_GRPC_PORT when 6333/6334 are taken.
+    ports:
+      - "127.0.0.1:${QDRANT_HTTP_PORT:-6333}:6333"
+      - "127.0.0.1:${QDRANT_GRPC_PORT:-6334}:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/127.0.0.1/6333"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  # Historical named volumes can retain ownership from an older container UID.
+  # This one-shot helper repairs only the application-owned checkpoint volume
+  # before a non-root web/CLI process opens its SQLite state.
+  state-permissions:
+    labels:
+      com.blackonyx.one-shot: "true"
+    image: black-onyx:1.0.0
+    entrypoint: ["/app/.venv/bin/python", "/app/scripts/fix_checkpoint_volume_owner.py"]
+    user: "0:0"
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN]
+    security_opt: [no-new-privileges:true]
+    network_mode: none
+    volumes:
+      - checkpoints_data:/app/.checkpoints
+    restart: "no"
+
+  web:
+    <<: *app-base
+    depends_on:
+      qdrant:
+        condition: service_started
+      searxng:
+        condition: service_started
+      state-permissions:
+        condition: service_completed_successfully
+    # Bind only to localhost on the host so the UI is not reachable from the
+    # network/internet. The container still listens on 0.0.0.0 *inside* its own
+    # network namespace (required for Docker port forwarding to work); that is
+    # isolated and not the same as exposing on the host's 0.0.0.0.
+    # Override with BLACK_ONYX_PORT when 8000 is already in use.
+    ports:
+      - "127.0.0.1:${BLACK_ONYX_PORT:-8000}:8000"
+    restart: unless-stopped
+    command: ["/app/.venv/bin/python", "/app/scripts/start_black_onyx_web.py"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  searxng:
+    # Pinned by digest; bump deliberately after reviewing the upstream release.
+    image: searxng/searxng:2026.9.25-12f8b6515@sha256:5286edb35782454ab8a102c5eff6b54bff745853191b46aeead95f225aa6dfb6
+    ports:
+      - "127.0.0.1:${SEARXNG_PORT:-18088}:8080"
+    volumes:
+      - ./deploy/searxng:/etc/searxng:ro
+    restart: unless-stopped
+    environment:
+      SEARXNG_BASE_URL: http://127.0.0.1:${SEARXNG_PORT:-18088}/
+      # SearXNG refuses to start without a secret. The fallback keeps local
+      # development working; set SEARXNG_SECRET in .env for real deployments.
+      SEARXNG_SECRET: ${SEARXNG_SECRET:-blackonyx-local-development-only}
+
+  # CLI runner does not auto-start. Use `docker-compose run --rm cli <args>`.
+  # Examples:
+  #   docker-compose run --rm cli ingest --directory /app/data --collection all-knowledge
+  #   docker-compose run --rm cli search --query "bitcoin addresses" --collection all-knowledge --limit 10
+  #   docker-compose run --rm cli collections list
+  #   docker-compose run --rm cli info
+  cli:
+    <<: *app-base
+    profiles: ["cli"]
+    depends_on:
+      qdrant:
+        condition: service_started
+      searxng:
+        condition: service_started
+      state-permissions:
+        condition: service_completed_successfully
+    # Default entrypoint is the black-onyx CLI; args are appended by `run`.
+    entrypoint: ["black-onyx"]
+
+volumes:
+  qdrant_data:
+    name: black-onyx_qdrant_data
+  checkpoints_data:
+    name: black-onyx_checkpoints_data
+  model_cache:
+    name: black-onyx_model_cache

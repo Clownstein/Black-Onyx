@@ -1,0 +1,12 @@
+{
+  "event_type": "metric.sample",
+  "metric_name": "http.server.duration.p95",
+  "value": 0.381,
+  "unit": "seconds",
+  "temporality": "gauge",
+  "dimensions": {
+    "method": "POST",
+    "route": "/payments"
+  },
+  "sample_interval_seconds": 60
+}

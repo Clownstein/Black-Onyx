@@ -1,0 +1,10 @@
+# Clear GPU reservations when the host Docker daemon has no usable NVIDIA/CDI
+# runtime (error: "failed to discover GPU vendor from CDI").
+#
+#   docker compose -f docker-compose.yml -f docker-compose.no-gpu.yml up -d web
+
+services:
+  web:
+    gpus: !reset null
+  cli:
+    gpus: !reset null

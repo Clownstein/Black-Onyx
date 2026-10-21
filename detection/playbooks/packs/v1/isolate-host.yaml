@@ -1,0 +1,37 @@
+id: isolate-host
+version: "1.0.0"
+name: Isolate host
+description: >
+  Request endpoint isolation for an asset tied to an incident (EDR / Wazuh AR /
+  Defender-style adapters). Always requires human approval; dry-run by default.
+  Alias of isolate-host-edr for catalog consumers that use the short id.
+mitre:
+  - T1486
+  - T1490
+approval:
+  required: true
+  roles: [analyst, admin]
+dry_run:
+  default: true
+inputs:
+  - name: asset_id
+    type: string
+    required: true
+  - name: reason
+    type: string
+    required: false
+  - name: ttl_minutes
+    type: integer
+    default: 120
+steps:
+  - id: validate
+    action: validate_asset
+  - id: request_approval
+    action: create_response_request
+    playbook_ref: packs/v1/isolate-host
+  - id: isolate
+    action: edr.isolate_host
+    when: approved
+    dry_run_skips_live: true
+audit:
+  retain_days: 365

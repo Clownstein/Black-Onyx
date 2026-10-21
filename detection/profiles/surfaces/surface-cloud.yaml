@@ -1,0 +1,31 @@
+pack_id: surface-cloud
+kind: surface
+version: '1.0'
+title: Cloud Surface Checks
+extends_surfaces:
+- cloud
+checks:
+- check_id: surface.cloud.public-admin
+  title: No public admin endpoints
+  surfaces:
+  - cloud
+  - network
+  automation: auto
+  severity_default: critical
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - new_external_peer
+- check_id: surface.cloud.audit
+  title: Cloud control-plane audit logs
+  surfaces:
+  - cloud
+  - identity
+  automation: auto
+  severity_default: high
+  evidence_types:
+  - detector_hit
+  bindings:
+    detectors:
+    - log_source_silent
