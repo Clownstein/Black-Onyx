@@ -1,4 +1,4 @@
-# Black Onyx
+# Black Onyx - WIP
 
 ![Black Onyx](BlackOnyxTransparentLogo.png)
 
