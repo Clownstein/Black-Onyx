@@ -7,8 +7,6 @@ Example conversations for teaching an LLM to call Black Onyx MCP tools correctly
 | File | Role |
 | --- | --- |
 | `tools.json` | OpenAI-style tool/function schemas for all **67** tools: 18 platform + 45 security executors + 4 approval/run controls |
-| `examples.jsonl` | One JSON object per line: multi-turn tool-calling dialogues |
-| `examples_gemma.jsonl` | Gemma 4 native `<\|tool_call>` examples alongside OpenAI-format rows |
 | `generate_examples.py` | Regenerates `tools.json` (platform + `sec_*`) and the 85 platform examples |
 | `generate_security_examples.py` | Appends 45 executor and 4 approval/run-control examples; run it **after** the line above |
 
