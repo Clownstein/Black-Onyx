@@ -308,4 +308,4 @@ Support continued development and model training: https://buymeacoffee.com/clown
 
 ## License
 
-MIT. See `LICENSE`.
+Apache License 2.0 See `LICENSE`.
